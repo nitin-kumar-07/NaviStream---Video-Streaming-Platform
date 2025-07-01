@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="NaviStream - Your personal video streaming platform" />
+  <title>NaviStream</title>
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#6B4EFF',
+            secondary: '#2D2B55',
+            accent: '#FF6B6B',
+            dark: {
+              bg: '#1A1A2E',
+              card: '#2D2B55',
+              text: '#E6E6FF'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+
+    .video-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .video-card {
+      transition: transform 0.2s ease-in-out;
+      cursor: pointer;
+    }
+
+    .video-card:hover {
+      transform: translateY(-4px);
+    }
+
+    .video-thumbnail {
+      position: relative;
+      padding-top: 56.25%;
+    }
+
+    .video-thumbnail img {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .video-duration {
+      position: absolute;
+      bottom: 8px;
+      right: 8px;
+      background: rgba(0, 0, 0, 0.8);
+      color: white;
+      padding: 2px 4px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+    }
+
+    .channel-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+
+    .sidebar {
+      width: 240px;
+      transition: width 0.3s ease;
+    }
+
+    .sidebar.collapsed {
+      width: 72px;
+    }
+
+    .main-content {
+      transition: margin-left 0.3s ease;
+    }
+
+    .main-content.expanded {
+      margin-left: 72px;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .animate-fadeIn {
+      animation: fadeIn 0.3s ease-out;
+    }
+
+    /* Video Player Styles */
+    .video-player-container {
+      position: relative;
+      width: 100%;
+      padding-top: 56.25%;
+    }
+
+    .video-player {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: #000;
+      transition: opacity 0.3s ease;
+    }
+
+    .video-player.loading {
+      opacity: 0.5;
+    }
+
+    .video-player.ready {
+      opacity: 1;
+    }
+
+    /* Custom video controls */
+    .custom-video-controls {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: linear-gradient(transparent, rgba(0,0,0,0.8));
+      padding: 20px;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .custom-video-controls.visible {
+      opacity: 1;
+    }
+
+    /* Progress bar styling */
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      background: rgba(255,255,255,0.3);
+      border-radius: 5px;
+      height: 4px;
+      outline: none;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      background: #fff;
+      border-radius: 50%;
+      width: 12px;
+      height: 12px;
+      cursor: pointer;
+    }
+
+    input[type="range"]::-moz-range-thumb {
+      background: #fff;
+      border-radius: 50%;
+      width: 12px;
+      height: 12px;
+      cursor: pointer;
+      border: none;
+    }
+
+    /* Auth Modal Styles */
+    .auth-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 50;
+    }
+
+    .auth-modal-content {
+      background: white;
+      padding: 2rem;
+      border-radius: 1rem;
+      width: 100%;
+      max-width: 400px;
+    }
+
+    .auth-tabs {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .auth-tab {
+      flex: 1;
+      text-align: center;
+      padding: 0.5rem;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+    }
+
+    .auth-tab.active {
+      border-bottom-color: #6B4EFF;
+      color: #6B4EFF;
+    }
+  </style>
+</head>
+<body class="bg-gray-50 dark:bg-dark-bg text-gray-900 dark:text-dark-text">
+  <!-- Auth Modal -->
+  <div id="authModal" class="auth-modal hidden">
+    <div class="auth-modal-content">
+      <div class="auth-tabs">
+        <div class="auth-tab active" data-tab="login">Login</div>
+        <div class="auth-tab" data-tab="register">Register</div>
+      </div>
+      
+      <form id="loginForm" class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium mb-1">Email</label>
+          <input type="email" id="loginEmail" required
+                 class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-primary">
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Password</label>
+          <input type="password" id="loginPassword" required
+                 class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-primary">
+        </div>
+        <button type="submit" 
+                class="w-full bg-primary text-white py-2 rounded-lg hover:bg-primary-dark transition-colors">
+          Login
+        </button>
+      </form>
+
+      <form id="registerForm" class="space-y-4 hidden">
+        <div>
+          <label class="block text-sm font-medium mb-1">Username</label>
+          <input type="text" id="registerUsername" required
+                 class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-primary">
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Email</label>
+          <input type="email" id="registerEmail" required
+                 class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-primary">
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Password</label>
+          <input type="password" id="registerPassword" required
+                 class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-primary">
+        </div>
+        <button type="submit"
+                class="w-full bg-primary text-white py-2 rounded-lg hover:bg-primary-dark transition-colors">
+          Register
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Sidebar -->
+  <aside class="sidebar fixed top-0 left-0 h-screen bg-white dark:bg-dark-card shadow-lg z-30">
+    <div class="p-4">
+      <div class="flex items-center justify-between mb-8">
+        <h1 class="text-2xl font-bold text-primary">NaviStream</h1>
+        <button onclick="toggleSidebar()" class="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full">
+          <i class="fas fa-bars"></i>
+        </button>
+      </div>
+      
+      <nav class="space-y-2">
+        <a href="#" class="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" onclick="showSection('homeSection')">
+          <i class="fas fa-home w-6"></i>
+          <span class="sidebar-text">Home</span>
+        </a>
+        <a href="#" class="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" onclick="showSection('trendingSection')">
+          <i class="fas fa-fire w-6"></i>
+          <span class="sidebar-text">Trending</span>
+        </a>
+        <a href="#" class="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" onclick="showSection('myVideosSection')">
+          <i class="fas fa-video w-6"></i>
+          <span class="sidebar-text">My Videos</span>
+        </a>
+        <a href="#" class="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" onclick="showSection('playlistsSection')">
+          <i class="fas fa-list w-6"></i>
+          <span class="sidebar-text">Playlists</span>
+        </a>
+        <a href="#" class="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" onclick="showSection('watchLaterSection')">
+          <i class="fas fa-clock w-6"></i>
+          <span class="sidebar-text">Watch Later</span>
+        </a>
+        <a href="#" class="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" onclick="showSection('likedSection')">
+          <i class="fas fa-heart w-6"></i>
+          <span class="sidebar-text">Liked Videos</span>
+        </a>
+        <a href="#" class="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" onclick="showSection('profileSection')">
+          <i class="fas fa-user w-6"></i>
+          <span class="sidebar-text">Profile</span>
+        </a>
+        <button onclick="showUploadModal()" class="w-full flex items-center space-x-3 p-3 rounded-lg bg-primary text-white hover:bg-primary-dark transition-colors">
+          <i class="fas fa-upload w-6"></i>
+          <span class="sidebar-text">Upload Video</span>
+        </button>
+      </nav>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="main-content ml-60 p-6">
+    <!-- Top Navigation -->
+    <div class="flex items-center justify-between mb-8">
+      <div class="flex-1 max-w-2xl">
+        <div class="relative">
+          <input type="text" 
+                 id="searchInput"
+                 placeholder="Search videos..." 
+                 class="w-full px-4 py-2 pl-10 rounded-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-dark-card focus:outline-none focus:border-primary">
+          <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+        </div>
+      </div>
+      <div class="flex items-center space-x-4">
+        <div class="flex items-center space-x-2">
+          <select id="sortSelect" class="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-dark-card focus:outline-none focus:border-primary">
+            <option value="newest">Newest</option>
+            <option value="oldest">Oldest</option>
+            <option value="mostViewed">Most Viewed</option>
+            <option value="mostLiked">Most Liked</option>
+          </select>
+          <select id="categoryFilter" class="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-dark-card focus:outline-none focus:border-primary">
+            <option value="">All Categories</option>
+            <option value="gaming">Gaming</option>
+            <option value="music">Music</option>
+            <option value="education">Education</option>
+            <option value="entertainment">Entertainment</option>
+            <option value="sports">Sports</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <button onclick="toggleTheme()" class="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full">
+          <i class="fas fa-moon dark:hidden"></i>
+          <i class="fas fa-sun hidden dark:block"></i>
+        </button>
+        <button id="loginButton" onclick="showAuthModal()" class="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-dark transition-colors">
+          Login
+        </button>
+        <div class="relative hidden" id="userProfileSection">
+          <button onclick="toggleUserMenu()" class="flex items-center space-x-2">
+            <img id="userAvatar" 
+                 src="https://ui-avatars.com/api/?name=Guest&background=6B4EFF&color=fff" 
+                 alt="User" 
+                 class="w-8 h-8 rounded-full">
+          </button>
+          <div id="userMenu" class="absolute right-0 mt-2 w-48 bg-white dark:bg-dark-card rounded-lg shadow-lg hidden">
+            <div class="py-1">
+              <a href="#" onclick="showSection('myVideosSection')" class="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-800">My Videos</a>
+              <a href="#" onclick="showSection('likedSection')" class="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-800">Liked Videos</a>
+              <button onclick="handleLogout()" class="block w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-800 text-red-500">
+                Logout
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Home Section -->
+    <section id="homeSection" class="mb-8">
+      <div class="bg-white dark:bg-dark-card rounded-xl shadow-lg p-6">
+        <h2 class="text-xl font-semibold mb-4">Featured Videos</h2>
+        <div class="video-grid">
+          <!-- Videos will be loaded here -->
+        </div>
+      </div>
+    </section>
+
+    <!-- My Videos Section -->
+    <section id="myVideosSection" class="mb-8 hidden">
+      <div class="bg-white dark:bg-dark-card rounded-xl shadow-lg p-6">
+        <h2 class="text-xl font-semibold mb-4">My Videos</h2>
+        <div class="video-grid">
+          <!-- User's videos will be loaded here -->
+        </div>
+      </div>
+    </section>
+
+    <!-- Trending Section -->
+    <section id="trendingSection" class="mb-8 hidden">
+      <div class="bg-white dark:bg-dark-card rounded-xl shadow-lg p-6">
+        <h2 class="text-xl font-semibold mb-4">Trending Videos</h2>
+        <div class="video-grid">
+          <!-- Trending videos will be loaded here -->
+        </div>
+      </div>
+    </section>
+
+    <!-- Liked Videos Section -->
+    <section id="likedSection" class="mb-8 hidden">
+      <div class="bg-white dark:bg-dark-card rounded-xl shadow-lg p-6">
+        <h2 class="text-xl font-semibold mb-4">Liked Videos</h2>
+        <div class="video-grid">
+          <!-- Liked videos will be loaded here -->
+        </div>
+      </div>
+    </section>
+
+    <!-- Playlists Section -->
+    <section id="playlistsSection" class="mb-8 hidden">
+      <div class="bg-white dark:bg-dark-card rounded-xl shadow-lg p-6">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-xl font-semibold">My Playlists</h2>
+          <button onclick="showCreatePlaylistModal()" class="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-dark transition-colors">
+            <i class="fas fa-plus mr-2"></i>Create Playlist
+        </button>
+        </div>
+        <div id="playlistsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <!-- Playlists will be loaded here -->
+        </div>
+      </div>
+    </section>
+
+    <!-- Watch Later Section -->
+    <section id="watchLaterSection" class="mb-8 hidden">
+      <div class="bg-white dark:bg-dark-card rounded-xl shadow-lg p-6">
+        <h2 class="text-xl font-semibold mb-4">Watch Later</h2>
+        <div class="video-grid">
+          <!-- Watch later videos will be loaded here -->
+        </div>
+      </div>
+    </section>
+
+    <!-- Profile Section -->
+    <section id="profileSection" class="mb-8 hidden">
+      <div class="bg-white dark:bg-dark-card rounded-xl shadow-lg p-6">
+        <div class="flex items-start space-x-6 mb-6">
+          <div class="flex-shrink-0">
+            <img id="profilePicture" src="https://ui-avatars.com/api/?name=User&background=6B4EFF&color=fff" 
+                 alt="Profile" class="w-24 h-24 rounded-full">
+          </div>
+          <div class="flex-1">
+            <h2 id="profileUsername" class="text-2xl font-bold mb-2">Username</h2>
+            <p id="profileBio" class="text-gray-600 dark:text-gray-400 mb-4">No bio yet</p>
+            <div class="flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400">
+              <span><i class="fas fa-video mr-1"></i><span id="videoCount">0</span> videos</span>
+              <span><i class="fas fa-users mr-1"></i><span id="subscriberCount">0</span> subscribers</span>
+            </div>
+            <button onclick="showEditProfileModal()" class="mt-4 bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-dark transition-colors">
+              Edit Profile
+            </button>
+          </div>
+        </div>
+        <div class="border-t pt-6">
+          <h3 class="text-lg font-semibold mb-4">My Videos</h3>
+          <div class="video-grid">
+            <!-- User's videos will be loaded here -->
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Upload Modal -->
+    <div id="uploadModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
+      <div class="bg-white dark:bg-dark-card rounded-xl shadow-lg p-6 w-full max-w-2xl mx-4">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-xl font-semibold">Upload Video</h2>
+          <button onclick="hideUploadModal()" class="text-gray-500 hover:text-gray-700">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <form id="uploadForm" class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium mb-1">Video Title</label>
+            <input type="text" id="videoTitle" required
+                   class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-primary"
+                   placeholder="Enter video title">
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">Description</label>
+            <textarea id="videoDescription" rows="3"
+                      class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-primary"
+                      placeholder="Enter video description"></textarea>
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">Category</label>
+            <select id="videoCategory" required
+                    class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-primary">
+              <option value="gaming">Gaming</option>
+              <option value="music">Music</option>
+              <option value="education">Education</option>
+              <option value="entertainment">Entertainment</option>
+              <option value="sports">Sports</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+        <div class="upload-area border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg p-8 text-center">
+          <i class="fas fa-cloud-upload-alt text-4xl text-primary mb-4"></i>
+          <h3 class="text-lg font-medium mb-2">Drag and drop your video here</h3>
+          <p class="text-gray-500 dark:text-gray-400 mb-4">or</p>
+          <input type="file" id="fileInput" accept="video/*" class="hidden">
+            <button type="button" onclick="document.getElementById('fileInput').click()" 
+                  class="bg-primary text-white px-6 py-2 rounded-lg hover:bg-primary-dark transition-colors">
+            Choose File
+          </button>
+          <div id="uploadStatus" class="mt-4"></div>
+        </div>
+          <div class="flex justify-end space-x-3">
+            <button type="button" onclick="hideUploadModal()" 
+                    class="px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+              Cancel
+            </button>
+            <button type="submit" id="uploadSubmitBtn"
+                    class="bg-primary text-white px-6 py-2 rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+              Upload Video
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Video Player Modal -->
+    <div id="videoPlayerModal" class="fixed inset-0 bg-black bg-opacity-95 hidden flex items-center justify-center z-50">
+      <div class="w-full max-w-7xl mx-4 relative">
+        <!-- Close button -->
+        <button onclick="hideVideoPlayer()" class="absolute -top-12 right-0 text-white hover:text-gray-300 z-10 transition-colors">
+          <i class="fas fa-times text-3xl"></i>
+        </button>
+        
+        <!-- Fullscreen button -->
+        <button id="fullscreenBtn" onclick="toggleFullscreen()" class="absolute -top-12 right-12 text-white hover:text-gray-300 z-10 transition-colors">
+          <i class="fas fa-expand text-2xl"></i>
+        </button>
+        
+        <div class="bg-white dark:bg-dark-card rounded-xl overflow-hidden shadow-2xl">
+          <!-- Video container -->
+          <div class="video-player-container relative bg-black">
+            <video id="mainVideoPlayer" class="video-player w-full" controls preload="metadata">
+              <source src="" type="video/mp4">
+              Your browser does not support the video tag.
+            </video>
+            
+            <!-- Loading indicator -->
+            <div id="videoLoadingIndicator" class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-75 hidden">
+              <div class="text-center text-white">
+                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
+                <p class="text-lg">Loading video...</p>
+              </div>
+            </div>
+            
+            <!-- Custom video controls overlay -->
+            <div id="customControls" class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4 hidden">
+              <div class="flex items-center space-x-4 text-white">
+                <button id="playPauseBtn" class="hover:text-gray-300 transition-colors">
+                  <i class="fas fa-play text-xl"></i>
+                </button>
+                <div class="flex-1">
+                  <input type="range" id="progressBar" class="w-full h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer" min="0" max="100" value="0">
+                </div>
+                <span id="currentTime" class="text-sm">0:00</span>
+                <span class="text-sm">/</span>
+                <span id="totalTime" class="text-sm">0:00</span>
+                <button id="volumeBtn" class="hover:text-gray-300 transition-colors">
+                  <i class="fas fa-volume-up text-lg"></i>
+                </button>
+                <input type="range" id="volumeSlider" class="w-20 h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer" min="0" max="100" value="100">
+                <button id="fullscreenBtn2" class="hover:text-gray-300 transition-colors">
+                  <i class="fas fa-expand text-lg"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Video info -->
+          <div class="p-6">
+            <div class="flex justify-between items-start mb-4">
+              <div class="flex-1">
+                <h2 class="video-title text-2xl font-bold text-gray-900 dark:text-white mb-2"></h2>
+                <p class="video-description text-gray-600 dark:text-gray-400 mb-4"></p>
+              </div>
+              <button id="deleteVideoBtn" onclick="deleteVideo(currentVideoId)" 
+                      class="text-red-500 hover:text-red-700 hidden ml-4 p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+                <i class="fas fa-trash text-lg"></i>
+              </button>
+            </div>
+            
+            <!-- Video stats and actions -->
+            <div class="flex items-center justify-between">
+              <div class="flex items-center space-x-6">
+                <button onclick="likeVideo()" class="like-button flex items-center space-x-2 text-gray-600 dark:text-gray-400 hover:text-red-500 transition-colors">
+                  <i class="far fa-heart text-xl"></i>
+                  <span class="like-count font-medium">0</span>
+                </button>
+                <div class="flex items-center space-x-2 text-gray-600 dark:text-gray-400">
+                  <i class="fas fa-eye text-lg"></i>
+                  <span class="view-count font-medium">0</span>
+                  <span class="text-sm">views</span>
+                </div>
+                <div class="flex items-center space-x-2 text-gray-600 dark:text-gray-400">
+                  <i class="fas fa-calendar text-lg"></i>
+                  <span class="upload-date font-medium"></span>
+                </div>
+              </div>
+              
+              <!-- Action buttons -->
+              <div class="flex items-center space-x-4">
+                <button onclick="addToWatchLater(currentVideoId)" class="flex items-center space-x-2 text-gray-600 dark:text-gray-400 hover:text-primary transition-colors">
+                  <i class="fas fa-clock text-lg"></i>
+                  <span>Watch Later</span>
+                </button>
+                <button onclick="showAddToPlaylistModal(currentVideoId)" class="flex items-center space-x-2 text-gray-600 dark:text-gray-400 hover:text-primary transition-colors">
+                  <i class="fas fa-list text-lg"></i>
+                  <span>Add to Playlist</span>
+                </button>
+                <button onclick="shareVideo()" class="flex items-center space-x-2 text-gray-600 dark:text-gray-400 hover:text-primary transition-colors">
+                  <i class="fas fa-share text-lg"></i>
+                  <span>Share</span>
+                </button>
+              </div>
+            </div>
+            
+            <!-- Comments Section -->
+            <div class="border-t mt-6 pt-6">
+              <h3 class="text-lg font-semibold mb-4">Comments</h3>
+              
+              <!-- Add comment form -->
+              <div class="mb-6">
+                <form id="commentForm" class="flex space-x-3">
+                  <img id="commentUserAvatar" src="https://ui-avatars.com/api/?name=User&background=6B4EFF&color=fff" 
+                       alt="User" class="w-8 h-8 rounded-full flex-shrink-0">
+                  <div class="flex-1">
+                    <input type="text" id="commentInput" placeholder="Add a comment..." 
+                           class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:border-primary bg-white dark:bg-dark-card">
+                  </div>
+                  <button type="submit" class="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-dark transition-colors">
+                    Comment
+                  </button>
+                </form>
+              </div>
+              
+              <!-- Comments list -->
+              <div id="commentsList" class="space-y-4">
+                <!-- Comments will be loaded here -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Messages -->
+  <div id="errorMessage" class="fixed bottom-4 right-4 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg hidden"></div>
+  <div id="successMessage" class="fixed bottom-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg hidden"></div>
+
+  <!-- Scripts -->
+  <script src="js/app.js"></script>
+</body>
+</html>
+
