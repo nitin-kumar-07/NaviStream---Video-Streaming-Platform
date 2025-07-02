@@ -2,6 +2,7 @@
 
 NaviStream is a full-stack web application that allows users to upload, stream, like, and manage videos securely using cloud infrastructure. It features user authentication, MongoDB Atlas for storage, and Cloudinary for media hosting.
 
+
 🚀 Features
 
 🔐 User Authentication (Register / Login / Logout)
@@ -21,9 +22,12 @@ NaviStream is a full-stack web application that allows users to upload, stream, 
 📁 JWT-based Route Protection
 
 
+
 🌟 Project Objective
 
 To build a secure, scalable video platform that enables users to upload and stream videos using cloud-based technologies like MongoDB Atlas and Cloudinary.
+
+
 
 💻 Frontend Implementation
 
@@ -32,6 +36,8 @@ Pure HTML, CSS, and JavaScript (no frameworks)
 Communicates with backend using fetch()
 
 Dynamically renders video cards, thumbnails, likes, and categories
+
+
 
 🚜 Backend Implementation
 
@@ -49,6 +55,7 @@ Endpoints:
 Uses multer-storage-cloudinary to handle video uploads
 
 
+
 📂 MongoDB Atlas
 
 Stores users and video metadata
@@ -60,6 +67,8 @@ Connection handled by Mongoose
 await mongoose.connect(process.env.MONGODB_URI, {...})
 
 
+
+
 ☁️ Cloudinary Integration
 
 Stores uploaded video files securely
@@ -69,6 +78,7 @@ Returns video url, public_id, and allows thumbnail access
 Used in <video> tags on the frontend
 
 
+
 🔐 Authentication
 
 JWT is generated during login
@@ -76,6 +86,8 @@ JWT is generated during login
 Protected routes verify token using middleware
 
 Passwords are hashed using bcryptjs
+
+
 
 
 📷 Upload & Streaming Flow
@@ -89,6 +101,7 @@ Metadata saved in MongoDB
 Videos streamed via Cloudinary URLs
 
 
+
 🛠️ Tech Stack
 
 🌐 Frontend:
@@ -96,6 +109,8 @@ Videos streamed via Cloudinary URLs
 HTML, CSS, Vanilla JS
 
 Responsive Design
+
+
 
 
 🔧 Backend:
@@ -109,6 +124,8 @@ Cloudinary (via multer-storage-cloudinary)
 JWT for Authentication
 
 bcryptjs for Password Hashing
+
+
 
 
 📁 Folder Structure (Explained)
