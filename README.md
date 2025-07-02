@@ -5,8 +5,11 @@ NaviStream is a full-stack web application that allows users to upload, stream, 
 🚀 Features
 
 🔐 User Authentication (Register / Login / Logout)
+
 📄 Video Upload using Cloudinary
+
 🎮 Video Streaming directly from Cloudinary
+
 💬 Video Metadata (title, description, thumbnail, category)
 ❤️ Like & Watch Later Functionality
 🔎 Search & Recommendations
