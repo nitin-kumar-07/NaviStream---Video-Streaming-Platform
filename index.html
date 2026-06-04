@@ -6,338 +6,92 @@
   <meta name="description" content="NaviStream - Your personal video streaming platform" />
   <title>NaviStream</title>
   <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            primary: '#6B4EFF',
-            secondary: '#2D2B55',
-            accent: '#FF6B6B',
-            dark: {
-              bg: '#1A1A2E',
-              card: '#2D2B55',
-              text: '#E6E6FF'
-            }
-          }
-        }
-      }
-    }
-  </script>
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-    
-    body {
-      font-family: 'Inter', sans-serif;
-    }
-
-    .video-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-      gap: 1.5rem;
-    }
-
-    .video-card {
-      transition: transform 0.2s ease-in-out;
-      cursor: pointer;
-    }
-
-    .video-card:hover {
-      transform: translateY(-4px);
-    }
-
-    .video-thumbnail {
-      position: relative;
-      padding-top: 56.25%;
-    }
-
-    .video-thumbnail img {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-
-    .video-duration {
-      position: absolute;
-      bottom: 8px;
-      right: 8px;
-      background: rgba(0, 0, 0, 0.8);
-      color: white;
-      padding: 2px 4px;
-      border-radius: 4px;
-      font-size: 0.75rem;
-    }
-
-    .channel-avatar {
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-      object-fit: cover;
-    }
-
-    .sidebar {
-      width: 240px;
-      transition: width 0.3s ease;
-    }
-
-    .sidebar.collapsed {
-      width: 72px;
-    }
-
-    .main-content {
-      transition: margin-left 0.3s ease;
-    }
-
-    .main-content.expanded {
-      margin-left: 72px;
-    }
-
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(10px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    .animate-fadeIn {
-      animation: fadeIn 0.3s ease-out;
-    }
-
-    /* Video Player Styles */
-    .video-player-container {
-      position: relative;
-      width: 100%;
-      padding-top: 56.25%;
-    }
-
-    .video-player {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: #000;
-      transition: opacity 0.3s ease;
-    }
-
-    .video-player.loading {
-      opacity: 0.5;
-    }
-
-    .video-player.ready {
-      opacity: 1;
-    }
-
-    /* Custom video controls */
-    .custom-video-controls {
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      background: linear-gradient(transparent, rgba(0,0,0,0.8));
-      padding: 20px;
-      opacity: 0;
-      transition: opacity 0.3s ease;
-    }
-
-    .custom-video-controls.visible {
-      opacity: 1;
-    }
-
-    /* Progress bar styling */
-    input[type="range"] {
-      -webkit-appearance: none;
-      appearance: none;
-      background: rgba(255,255,255,0.3);
-      border-radius: 5px;
-      height: 4px;
-      outline: none;
-    }
-
-    input[type="range"]::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      appearance: none;
-      background: #fff;
-      border-radius: 50%;
-      width: 12px;
-      height: 12px;
-      cursor: pointer;
-    }
-
-    input[type="range"]::-moz-range-thumb {
-      background: #fff;
-      border-radius: 50%;
-      width: 12px;
-      height: 12px;
-      cursor: pointer;
-      border: none;
-    }
-
-    /* Auth Modal Styles */
-    .auth-modal {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(0,0,0,0.5);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 50;
-    }
-
-    .auth-modal-content {
-      background: white;
-      padding: 2rem;
-      border-radius: 1rem;
-      width: 100%;
-      max-width: 400px;
-    }
-
-    .auth-tabs {
-      display: flex;
-      gap: 1rem;
-      margin-bottom: 1.5rem;
-    }
-
-    .auth-tab {
-      flex: 1;
-      text-align: center;
-      padding: 0.5rem;
-      cursor: pointer;
-      border-bottom: 2px solid transparent;
-    }
-
-    .auth-tab.active {
-      border-bottom-color: #6B4EFF;
-      color: #6B4EFF;
-    }
-  </style>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles/main.css" />
 </head>
-<body class="bg-gray-50 dark:bg-dark-bg text-gray-900 dark:text-dark-text">
-  <!-- Auth Modal -->
-  <div id="authModal" class="auth-modal hidden">
-    <div class="auth-modal-content">
-      <div class="auth-tabs">
-        <div class="auth-tab active" data-tab="login">Login</div>
-        <div class="auth-tab" data-tab="register">Register</div>
-      </div>
-      
-      <form id="loginForm" class="space-y-4">
-        <div>
-          <label class="block text-sm font-medium mb-1">Email</label>
-          <input type="email" id="loginEmail" required
-                 class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-primary">
-        </div>
-        <div>
-          <label class="block text-sm font-medium mb-1">Password</label>
-          <input type="password" id="loginPassword" required
-                 class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-primary">
-        </div>
-        <button type="submit" 
-                class="w-full bg-primary text-white py-2 rounded-lg hover:bg-primary-dark transition-colors">
-          Login
-        </button>
-      </form>
-
-      <form id="registerForm" class="space-y-4 hidden">
-        <div>
-          <label class="block text-sm font-medium mb-1">Username</label>
-          <input type="text" id="registerUsername" required
-                 class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-primary">
-        </div>
-        <div>
-          <label class="block text-sm font-medium mb-1">Email</label>
-          <input type="email" id="registerEmail" required
-                 class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-primary">
-        </div>
-        <div>
-          <label class="block text-sm font-medium mb-1">Password</label>
-          <input type="password" id="registerPassword" required
-                 class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-primary">
-        </div>
-        <button type="submit"
-                class="w-full bg-primary text-white py-2 rounded-lg hover:bg-primary-dark transition-colors">
-          Register
-        </button>
-      </form>
-    </div>
-  </div>
-
-  <!-- Sidebar -->
-  <aside class="sidebar fixed top-0 left-0 h-screen bg-white dark:bg-dark-card shadow-lg z-30">
-    <div class="p-4">
-      <div class="flex items-center justify-between mb-8">
-        <h1 class="text-2xl font-bold text-primary">NaviStream</h1>
-        <button onclick="toggleSidebar()" class="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full">
-          <i class="fas fa-bars"></i>
+<body data-theme="dark">
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar__header">
+        <a href="#" class="brand" onclick="showSection('homeSection')">
+          <span class="brand__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none">
+              <path d="M8 6.5v11l9-5.5-9-5.5Z" fill="currentColor"></path>
+            </svg>
+          </span>
+          <span class="brand__text">NaviStream</span>
+        </a>
+        <button type="button" class="icon-button desktop-only" onclick="toggleSidebar()" aria-label="Toggle sidebar">
+          <span class="nav-icon" data-icon="menu"></span>
         </button>
       </div>
-      
-      <nav class="space-y-2">
-        <a href="#" class="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" onclick="showSection('homeSection')">
-          <i class="fas fa-home w-6"></i>
-          <span class="sidebar-text">Home</span>
+
+      <nav class="sidebar__nav">
+        <a href="#" class="sidebar-item" data-section="homeSection" onclick="showSection('homeSection')">
+          <span class="nav-icon" data-icon="home"></span>
+          <span class="sidebar-item__label">Home</span>
         </a>
-        <a href="#" class="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" onclick="showSection('trendingSection')">
-          <i class="fas fa-fire w-6"></i>
-          <span class="sidebar-text">Trending</span>
+        <a href="#" class="sidebar-item" data-section="trendingSection" onclick="showSection('trendingSection')">
+          <span class="nav-icon" data-icon="trending"></span>
+          <span class="sidebar-item__label">Trending</span>
         </a>
-        <a href="#" class="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" onclick="showSection('myVideosSection')">
-          <i class="fas fa-video w-6"></i>
-          <span class="sidebar-text">My Videos</span>
+        <a href="#" class="sidebar-item" data-section="subscriptionsSection" onclick="showSection('likedSection')">
+          <span class="nav-icon" data-icon="subscriptions"></span>
+          <span class="sidebar-item__label">Subscriptions</span>
         </a>
-        <a href="#" class="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" onclick="showSection('playlistsSection')">
-          <i class="fas fa-list w-6"></i>
-          <span class="sidebar-text">Playlists</span>
+        <a href="#" class="sidebar-item" data-section="watchLaterSection" onclick="showSection('watchLaterSection')">
+          <span class="nav-icon" data-icon="clock"></span>
+          <span class="sidebar-item__label">Watch Later</span>
         </a>
-        <a href="#" class="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" onclick="showSection('watchLaterSection')">
-          <i class="fas fa-clock w-6"></i>
-          <span class="sidebar-text">Watch Later</span>
+        <a href="#" class="sidebar-item" data-section="likedSection" onclick="showSection('likedSection')">
+          <span class="nav-icon" data-icon="heart"></span>
+          <span class="sidebar-item__label">Liked Videos</span>
         </a>
-        <a href="#" class="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" onclick="showSection('likedSection')">
-          <i class="fas fa-heart w-6"></i>
-          <span class="sidebar-text">Liked Videos</span>
+        <a href="#" class="sidebar-item" data-section="myVideosSection" onclick="showSection('myVideosSection')">
+          <span class="nav-icon" data-icon="history"></span>
+          <span class="sidebar-item__label">History</span>
         </a>
-        <a href="#" class="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" onclick="showSection('profileSection')">
-          <i class="fas fa-user w-6"></i>
-          <span class="sidebar-text">Profile</span>
+        <a href="#" class="sidebar-item" data-section="profileSection" onclick="showSection('profileSection')">
+          <span class="nav-icon" data-icon="user"></span>
+          <span class="sidebar-item__label">Profile</span>
         </a>
-        <button onclick="showUploadModal()" class="w-full flex items-center space-x-3 p-3 rounded-lg bg-primary text-white hover:bg-primary-dark transition-colors">
-          <i class="fas fa-upload w-6"></i>
-          <span class="sidebar-text">Upload Video</span>
-        </button>
       </nav>
-    </div>
-  </aside>
+    </aside>
 
-  <!-- Main Content -->
-  <main class="main-content ml-60 p-6">
-    <!-- Top Navigation -->
-    <div class="flex items-center justify-between mb-8">
-      <div class="flex-1 max-w-2xl">
-        <div class="relative">
-          <input type="text" 
-                 id="searchInput"
-                 placeholder="Search videos..." 
-                 class="w-full px-4 py-2 pl-10 rounded-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-dark-card focus:outline-none focus:border-primary">
-          <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+    <div class="app-main" id="appMain">
+      <header class="topbar" id="topbar">
+        <div class="topbar__left">
+          <button type="button" class="icon-button mobile-only" onclick="toggleSidebar()" aria-label="Open menu">
+            <span class="nav-icon" data-icon="menu"></span>
+          </button>
+          <a href="#" class="brand brand--mobile" onclick="showSection('homeSection')">
+            <span class="brand__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none">
+                <path d="M8 6.5v11l9-5.5-9-5.5Z" fill="currentColor"></path>
+              </svg>
+            </span>
+            <span class="brand__text">NaviStream</span>
+          </a>
         </div>
-      </div>
-      <div class="flex items-center space-x-4">
-        <div class="flex items-center space-x-2">
-          <select id="sortSelect" class="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-dark-card focus:outline-none focus:border-primary">
+
+        <div class="topbar__center">
+          <div class="search-shell">
+            <span class="nav-icon search-shell__icon" data-icon="search"></span>
+            <input type="text" id="searchInput" placeholder="Search videos, creators, categories" />
+          </div>
+        </div>
+
+        <div class="topbar__right">
+          <select id="sortSelect" class="topbar-select">
             <option value="newest">Newest</option>
             <option value="oldest">Oldest</option>
             <option value="mostViewed">Most Viewed</option>
             <option value="mostLiked">Most Liked</option>
           </select>
-          <select id="categoryFilter" class="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-dark-card focus:outline-none focus:border-primary">
-            <option value="">All Categories</option>
+          <select id="categoryFilter" class="topbar-select visually-hidden">
+            <option value="">All</option>
             <option value="gaming">Gaming</option>
             <option value="music">Music</option>
             <option value="education">Education</option>
@@ -345,154 +99,206 @@
             <option value="sports">Sports</option>
             <option value="other">Other</option>
           </select>
-        </div>
-        <button onclick="toggleTheme()" class="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full">
-          <i class="fas fa-moon dark:hidden"></i>
-          <i class="fas fa-sun hidden dark:block"></i>
-        </button>
-        <button id="loginButton" onclick="showAuthModal()" class="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-dark transition-colors">
-          Login
-        </button>
-        <div class="relative hidden" id="userProfileSection">
-          <button onclick="toggleUserMenu()" class="flex items-center space-x-2">
-            <img id="userAvatar" 
-                 src="https://ui-avatars.com/api/?name=Guest&background=6B4EFF&color=fff" 
-                 alt="User" 
-                 class="w-8 h-8 rounded-full">
+          <button type="button" class="upload-trigger" onclick="showUploadModal()">
+            <span class="nav-icon" data-icon="upload"></span>
+            <span>Upload</span>
           </button>
-          <div id="userMenu" class="absolute right-0 mt-2 w-48 bg-white dark:bg-dark-card rounded-lg shadow-lg hidden">
-            <div class="py-1">
-              <a href="#" onclick="showSection('myVideosSection')" class="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-800">My Videos</a>
-              <a href="#" onclick="showSection('likedSection')" class="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-800">Liked Videos</a>
-              <button onclick="handleLogout()" class="block w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-800 text-red-500">
-                Logout
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Home Section -->
-    <section id="homeSection" class="mb-8">
-      <div class="bg-white dark:bg-dark-card rounded-xl shadow-lg p-6">
-        <h2 class="text-xl font-semibold mb-4">Featured Videos</h2>
-        <div class="video-grid">
-          <!-- Videos will be loaded here -->
-        </div>
-      </div>
-    </section>
-
-    <!-- My Videos Section -->
-    <section id="myVideosSection" class="mb-8 hidden">
-      <div class="bg-white dark:bg-dark-card rounded-xl shadow-lg p-6">
-        <h2 class="text-xl font-semibold mb-4">My Videos</h2>
-        <div class="video-grid">
-          <!-- User's videos will be loaded here -->
-        </div>
-      </div>
-    </section>
-
-    <!-- Trending Section -->
-    <section id="trendingSection" class="mb-8 hidden">
-      <div class="bg-white dark:bg-dark-card rounded-xl shadow-lg p-6">
-        <h2 class="text-xl font-semibold mb-4">Trending Videos</h2>
-        <div class="video-grid">
-          <!-- Trending videos will be loaded here -->
-        </div>
-      </div>
-    </section>
-
-    <!-- Liked Videos Section -->
-    <section id="likedSection" class="mb-8 hidden">
-      <div class="bg-white dark:bg-dark-card rounded-xl shadow-lg p-6">
-        <h2 class="text-xl font-semibold mb-4">Liked Videos</h2>
-        <div class="video-grid">
-          <!-- Liked videos will be loaded here -->
-        </div>
-      </div>
-    </section>
-
-    <!-- Playlists Section -->
-    <section id="playlistsSection" class="mb-8 hidden">
-      <div class="bg-white dark:bg-dark-card rounded-xl shadow-lg p-6">
-        <div class="flex justify-between items-center mb-4">
-          <h2 class="text-xl font-semibold">My Playlists</h2>
-          <button onclick="showCreatePlaylistModal()" class="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-dark transition-colors">
-            <i class="fas fa-plus mr-2"></i>Create Playlist
-        </button>
-        </div>
-        <div id="playlistsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <!-- Playlists will be loaded here -->
-        </div>
-      </div>
-    </section>
-
-    <!-- Watch Later Section -->
-    <section id="watchLaterSection" class="mb-8 hidden">
-      <div class="bg-white dark:bg-dark-card rounded-xl shadow-lg p-6">
-        <h2 class="text-xl font-semibold mb-4">Watch Later</h2>
-        <div class="video-grid">
-          <!-- Watch later videos will be loaded here -->
-        </div>
-      </div>
-    </section>
-
-    <!-- Profile Section -->
-    <section id="profileSection" class="mb-8 hidden">
-      <div class="bg-white dark:bg-dark-card rounded-xl shadow-lg p-6">
-        <div class="flex items-start space-x-6 mb-6">
-          <div class="flex-shrink-0">
-            <img id="profilePicture" src="https://ui-avatars.com/api/?name=User&background=6B4EFF&color=fff" 
-                 alt="Profile" class="w-24 h-24 rounded-full">
-          </div>
-          <div class="flex-1">
-            <h2 id="profileUsername" class="text-2xl font-bold mb-2">Username</h2>
-            <p id="profileBio" class="text-gray-600 dark:text-gray-400 mb-4">No bio yet</p>
-            <div class="flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400">
-              <span><i class="fas fa-video mr-1"></i><span id="videoCount">0</span> videos</span>
-              <span><i class="fas fa-users mr-1"></i><span id="subscriberCount">0</span> subscribers</span>
-            </div>
-            <button onclick="showEditProfileModal()" class="mt-4 bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-dark transition-colors">
-              Edit Profile
+          <button type="button" class="icon-button" onclick="toggleTheme()" aria-label="Toggle theme">
+            <span class="nav-icon" data-icon="theme"></span>
+          </button>
+          <button type="button" class="icon-button" aria-label="Notifications">
+            <span class="nav-icon" data-icon="bell"></span>
+          </button>
+          <button id="loginButton" type="button" class="secondary-button" onclick="showAuthModal()">Login</button>
+          <div class="user-menu hidden" id="userProfileSection">
+            <button type="button" class="avatar-button" onclick="toggleUserMenu()">
+              <img id="userAvatar" src="https://ui-avatars.com/api/?name=Guest&background=ff4444&color=fff" alt="User avatar" />
             </button>
+            <div id="userMenu" class="user-dropdown hidden">
+              <a href="#" onclick="showSection('myVideosSection')">My Videos</a>
+              <a href="#" onclick="showSection('likedSection')">Liked Videos</a>
+              <a href="#" onclick="showSection('profileSection')">Channel</a>
+              <button type="button" onclick="handleLogout()">Logout</button>
+            </div>
           </div>
         </div>
-        <div class="border-t pt-6">
-          <h3 class="text-lg font-semibold mb-4">My Videos</h3>
-          <div class="video-grid">
-            <!-- User's videos will be loaded here -->
-          </div>
-        </div>
-      </div>
-    </section>
+      </header>
 
-    <!-- Upload Modal -->
-    <div id="uploadModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
-      <div class="bg-white dark:bg-dark-card rounded-xl shadow-lg p-6 w-full max-w-2xl mx-4">
-        <div class="flex justify-between items-center mb-4">
-          <h2 class="text-xl font-semibold">Upload Video</h2>
-          <button onclick="hideUploadModal()" class="text-gray-500 hover:text-gray-700">
-            <i class="fas fa-times"></i>
-          </button>
+      <div class="category-bar" id="categoryBar">
+        <button class="category-pill is-active" data-value="" data-icon="grid">All</button>
+        <button class="category-pill" data-value="gaming" data-icon="gamepad">Gaming</button>
+        <button class="category-pill" data-value="music" data-icon="music">Music</button>
+        <button class="category-pill" data-value="education" data-icon="book">Education</button>
+        <button class="category-pill" data-value="entertainment" data-icon="sparkles">Entertainment</button>
+        <button class="category-pill" data-value="sports" data-icon="sports">Sports</button>
+        <button class="category-pill" data-value="other" data-icon="layers">Other</button>
+      </div>
+
+      <main class="content" id="contentRoot">
+        <section id="homeSection" class="view-section is-active">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Discover</p>
+              <h1>Featured Videos</h1>
+            </div>
+          </div>
+          <div class="video-grid"></div>
+        </section>
+
+        <section id="myVideosSection" class="view-section hidden">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Library</p>
+              <h1>My Videos</h1>
+            </div>
+          </div>
+          <div class="video-grid"></div>
+        </section>
+
+        <section id="trendingSection" class="view-section hidden">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Popular</p>
+              <h1>Trending Now</h1>
+            </div>
+          </div>
+          <div class="video-grid"></div>
+        </section>
+
+        <section id="likedSection" class="view-section hidden">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Favorites</p>
+              <h1>Liked Videos</h1>
+            </div>
+          </div>
+          <div class="video-grid"></div>
+        </section>
+
+        <section id="playlistsSection" class="view-section hidden">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Collections</p>
+              <h1>Playlists</h1>
+            </div>
+            <button type="button" class="secondary-button" onclick="showCreatePlaylistModal()">Create Playlist</button>
+          </div>
+          <div id="playlistsGrid" class="playlist-grid"></div>
+        </section>
+
+        <section id="watchLaterSection" class="view-section hidden">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Queue</p>
+              <h1>Watch Later</h1>
+            </div>
+          </div>
+          <div class="video-grid"></div>
+        </section>
+
+        <section id="profileSection" class="view-section hidden">
+          <div class="profile-banner"></div>
+          <div class="profile-shell">
+            <div class="profile-header">
+              <img id="profilePicture" src="https://ui-avatars.com/api/?name=User&background=ff4444&color=fff" alt="Profile picture" class="profile-avatar" />
+              <div class="profile-meta">
+                <h1 id="profileUsername">Username</h1>
+                <p id="profileBio">No bio yet</p>
+                <div class="profile-stats">
+                  <span><strong id="videoCount">0</strong> videos</span>
+                  <span><strong id="subscriberCount">0</strong> subscribers</span>
+                </div>
+              </div>
+              <div class="profile-actions">
+                <button type="button" class="upload-trigger" onclick="showEditProfileModal()">Subscribe</button>
+              </div>
+            </div>
+
+            <div class="profile-tabs">
+              <button type="button" class="profile-tab is-active">Videos</button>
+              <button type="button" class="profile-tab">Playlists</button>
+              <button type="button" class="profile-tab">About</button>
+            </div>
+
+            <div class="video-grid"></div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <div id="authModal" class="modal-shell hidden">
+    <div class="modal-card auth-card">
+      <div class="auth-tabs">
+        <button type="button" class="auth-tab active" data-tab="login">Login</button>
+        <button type="button" class="auth-tab" data-tab="register">Register</button>
+      </div>
+
+      <form id="loginForm" class="stack-form">
+        <label class="field">
+          <span>Email</span>
+          <input type="email" id="loginEmail" required />
+        </label>
+        <label class="field">
+          <span>Password</span>
+          <input type="password" id="loginPassword" required />
+        </label>
+        <button type="submit" class="upload-trigger auth-submit">Login</button>
+      </form>
+
+      <form id="registerForm" class="stack-form hidden">
+        <label class="field">
+          <span>Username</span>
+          <input type="text" id="registerUsername" required />
+        </label>
+        <label class="field">
+          <span>Email</span>
+          <input type="email" id="registerEmail" required />
+        </label>
+        <label class="field">
+          <span>Password</span>
+          <input type="password" id="registerPassword" required />
+        </label>
+        <button type="submit" class="upload-trigger auth-submit">Register</button>
+      </form>
+    </div>
+  </div>
+
+  <div id="uploadModal" class="modal-shell hidden">
+    <div class="modal-card upload-card">
+      <div class="modal-card__header">
+        <div>
+          <p class="eyebrow">Creator Studio</p>
+          <h2>Upload Video</h2>
         </div>
-        <form id="uploadForm" class="space-y-4">
-          <div>
-            <label class="block text-sm font-medium mb-1">Video Title</label>
-            <input type="text" id="videoTitle" required
-                   class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-primary"
-                   placeholder="Enter video title">
+        <button type="button" class="icon-button" onclick="hideUploadModal()" aria-label="Close upload">
+          <span class="nav-icon" data-icon="close"></span>
+        </button>
+      </div>
+
+      <form id="uploadForm" class="stack-form">
+        <div class="upload-dropzone" id="uploadDropzone">
+          <input type="file" id="fileInput" accept="video/*" class="hidden" />
+          <div class="upload-dropzone__icon">
+            <span class="nav-icon" data-icon="cloud"></span>
           </div>
-          <div>
-            <label class="block text-sm font-medium mb-1">Description</label>
-            <textarea id="videoDescription" rows="3"
-                      class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-primary"
-                      placeholder="Enter video description"></textarea>
-          </div>
-          <div>
-            <label class="block text-sm font-medium mb-1">Category</label>
-            <select id="videoCategory" required
-                    class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-primary">
+          <h3>Drag &amp; drop your video here</h3>
+          <p>or choose a file to start uploading</p>
+          <button type="button" class="secondary-button" onclick="document.getElementById('fileInput').click()">Choose File</button>
+        </div>
+        <div id="uploadStatus"></div>
+        <label class="field">
+          <span>Title</span>
+          <input type="text" id="videoTitle" required placeholder="Give your upload a title" />
+        </label>
+        <label class="field">
+          <span>Description</span>
+          <textarea id="videoDescription" rows="4" placeholder="Tell viewers what this video is about"></textarea>
+        </label>
+        <div class="field-grid">
+          <label class="field">
+            <span>Category</span>
+            <select id="videoCategory" required>
               <option value="gaming">Gaming</option>
               <option value="music">Music</option>
               <option value="education">Education</option>
@@ -500,167 +306,130 @@
               <option value="sports">Sports</option>
               <option value="other">Other</option>
             </select>
-          </div>
-        <div class="upload-area border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg p-8 text-center">
-          <i class="fas fa-cloud-upload-alt text-4xl text-primary mb-4"></i>
-          <h3 class="text-lg font-medium mb-2">Drag and drop your video here</h3>
-          <p class="text-gray-500 dark:text-gray-400 mb-4">or</p>
-          <input type="file" id="fileInput" accept="video/*" class="hidden">
-            <button type="button" onclick="document.getElementById('fileInput').click()" 
-                  class="bg-primary text-white px-6 py-2 rounded-lg hover:bg-primary-dark transition-colors">
-            Choose File
-          </button>
-          <div id="uploadStatus" class="mt-4"></div>
+          </label>
+          <label class="field">
+            <span>Tags</span>
+            <input type="text" id="videoTags" placeholder="music, tutorial, highlights" />
+          </label>
         </div>
-          <div class="flex justify-end space-x-3">
-            <button type="button" onclick="hideUploadModal()" 
-                    class="px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-              Cancel
-            </button>
-            <button type="submit" id="uploadSubmitBtn"
-                    class="bg-primary text-white px-6 py-2 rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-              Upload Video
-            </button>
-          </div>
-        </form>
-      </div>
+        <div class="form-actions">
+          <button type="button" class="secondary-button" onclick="hideUploadModal()">Cancel</button>
+          <button type="submit" id="uploadSubmitBtn" class="upload-trigger" disabled>Upload Video</button>
+        </div>
+      </form>
     </div>
+  </div>
 
-    <!-- Video Player Modal -->
-    <div id="videoPlayerModal" class="fixed inset-0 bg-black bg-opacity-95 hidden flex items-center justify-center z-50">
-      <div class="w-full max-w-7xl mx-4 relative">
-        <!-- Close button -->
-        <button onclick="hideVideoPlayer()" class="absolute -top-12 right-0 text-white hover:text-gray-300 z-10 transition-colors">
-          <i class="fas fa-times text-3xl"></i>
-        </button>
-        
-        <!-- Fullscreen button -->
-        <button id="fullscreenBtn" onclick="toggleFullscreen()" class="absolute -top-12 right-12 text-white hover:text-gray-300 z-10 transition-colors">
-          <i class="fas fa-expand text-2xl"></i>
-        </button>
-        
-        <div class="bg-white dark:bg-dark-card rounded-xl overflow-hidden shadow-2xl">
-          <!-- Video container -->
-          <div class="video-player-container relative bg-black">
-            <video id="mainVideoPlayer" class="video-player w-full" controls preload="metadata">
-              <source src="" type="video/mp4">
+  <div id="videoPlayerModal" class="player-shell hidden">
+    <div class="player-page">
+      <div class="player-page__left">
+        <div class="player-toolbar">
+          <button type="button" class="secondary-button" onclick="hideVideoPlayer()">
+            <span class="nav-icon" data-icon="arrow-left"></span>
+            <span>Back</span>
+          </button>
+          <button id="fullscreenBtn" type="button" class="icon-button" onclick="toggleFullscreen()" aria-label="Fullscreen">
+            <span class="nav-icon" data-icon="expand"></span>
+          </button>
+        </div>
+
+        <div class="video-player-frame">
+          <div class="video-player-container">
+            <video id="mainVideoPlayer" class="video-player" controls preload="metadata">
+              <source src="" type="video/mp4" />
               Your browser does not support the video tag.
             </video>
-            
-            <!-- Loading indicator -->
-            <div id="videoLoadingIndicator" class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-75 hidden">
-              <div class="text-center text-white">
-                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
-                <p class="text-lg">Loading video...</p>
-              </div>
-            </div>
-            
-            <!-- Custom video controls overlay -->
-            <div id="customControls" class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4 hidden">
-              <div class="flex items-center space-x-4 text-white">
-                <button id="playPauseBtn" class="hover:text-gray-300 transition-colors">
-                  <i class="fas fa-play text-xl"></i>
-                </button>
-                <div class="flex-1">
-                  <input type="range" id="progressBar" class="w-full h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer" min="0" max="100" value="0">
-                </div>
-                <span id="currentTime" class="text-sm">0:00</span>
-                <span class="text-sm">/</span>
-                <span id="totalTime" class="text-sm">0:00</span>
-                <button id="volumeBtn" class="hover:text-gray-300 transition-colors">
-                  <i class="fas fa-volume-up text-lg"></i>
-                </button>
-                <input type="range" id="volumeSlider" class="w-20 h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer" min="0" max="100" value="100">
-                <button id="fullscreenBtn2" class="hover:text-gray-300 transition-colors">
-                  <i class="fas fa-expand text-lg"></i>
-                </button>
-              </div>
-            </div>
-          </div>
-          
-          <!-- Video info -->
-          <div class="p-6">
-            <div class="flex justify-between items-start mb-4">
-              <div class="flex-1">
-                <h2 class="video-title text-2xl font-bold text-gray-900 dark:text-white mb-2"></h2>
-                <p class="video-description text-gray-600 dark:text-gray-400 mb-4"></p>
-              </div>
-              <button id="deleteVideoBtn" onclick="deleteVideo(currentVideoId)" 
-                      class="text-red-500 hover:text-red-700 hidden ml-4 p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
-                <i class="fas fa-trash text-lg"></i>
-              </button>
-            </div>
-            
-            <!-- Video stats and actions -->
-            <div class="flex items-center justify-between">
-              <div class="flex items-center space-x-6">
-                <button onclick="likeVideo()" class="like-button flex items-center space-x-2 text-gray-600 dark:text-gray-400 hover:text-red-500 transition-colors">
-                  <i class="far fa-heart text-xl"></i>
-                  <span class="like-count font-medium">0</span>
-                </button>
-                <div class="flex items-center space-x-2 text-gray-600 dark:text-gray-400">
-                  <i class="fas fa-eye text-lg"></i>
-                  <span class="view-count font-medium">0</span>
-                  <span class="text-sm">views</span>
-                </div>
-                <div class="flex items-center space-x-2 text-gray-600 dark:text-gray-400">
-                  <i class="fas fa-calendar text-lg"></i>
-                  <span class="upload-date font-medium"></span>
-                </div>
-              </div>
-              
-              <!-- Action buttons -->
-              <div class="flex items-center space-x-4">
-                <button onclick="addToWatchLater(currentVideoId)" class="flex items-center space-x-2 text-gray-600 dark:text-gray-400 hover:text-primary transition-colors">
-                  <i class="fas fa-clock text-lg"></i>
-                  <span>Watch Later</span>
-                </button>
-                <button onclick="showAddToPlaylistModal(currentVideoId)" class="flex items-center space-x-2 text-gray-600 dark:text-gray-400 hover:text-primary transition-colors">
-                  <i class="fas fa-list text-lg"></i>
-                  <span>Add to Playlist</span>
-                </button>
-                <button onclick="shareVideo()" class="flex items-center space-x-2 text-gray-600 dark:text-gray-400 hover:text-primary transition-colors">
-                  <i class="fas fa-share text-lg"></i>
-                  <span>Share</span>
-                </button>
-              </div>
-            </div>
-            
-            <!-- Comments Section -->
-            <div class="border-t mt-6 pt-6">
-              <h3 class="text-lg font-semibold mb-4">Comments</h3>
-              
-              <!-- Add comment form -->
-              <div class="mb-6">
-                <form id="commentForm" class="flex space-x-3">
-                  <img id="commentUserAvatar" src="https://ui-avatars.com/api/?name=User&background=6B4EFF&color=fff" 
-                       alt="User" class="w-8 h-8 rounded-full flex-shrink-0">
-                  <div class="flex-1">
-                    <input type="text" id="commentInput" placeholder="Add a comment..." 
-                           class="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:border-primary bg-white dark:bg-dark-card">
-                  </div>
-                  <button type="submit" class="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-dark transition-colors">
-                    Comment
-                  </button>
-                </form>
-              </div>
-              
-              <!-- Comments list -->
-              <div id="commentsList" class="space-y-4">
-                <!-- Comments will be loaded here -->
-              </div>
+            <div id="videoLoadingIndicator" class="player-loading hidden">
+              <div class="spinner"></div>
+              <p>Loading video...</p>
             </div>
           </div>
         </div>
+
+        <div class="player-meta">
+          <div class="player-title-row">
+            <div>
+              <h2 class="video-title"></h2>
+              <p class="player-subtitle"><span class="view-count">0</span> views <span class="dot-separator">·</span> <span class="upload-date"></span></p>
+            </div>
+            <button id="deleteVideoBtn" type="button" class="icon-button danger hidden" onclick="deleteVideo(currentVideoId)" aria-label="Delete video">
+              <span class="nav-icon" data-icon="trash"></span>
+            </button>
+          </div>
+
+          <div class="player-actions">
+            <button type="button" class="action-chip like-button" onclick="likeVideo()">
+              <span class="nav-icon" data-icon="thumbs-up"></span>
+              <span class="like-count">0</span>
+            </button>
+            <button type="button" class="action-chip" id="dislikeButton">
+              <span class="nav-icon" data-icon="thumbs-down"></span>
+              <span>Dislike</span>
+            </button>
+            <button type="button" class="action-chip" onclick="shareVideo()">
+              <span class="nav-icon" data-icon="share"></span>
+              <span>Share</span>
+            </button>
+            <button type="button" class="action-chip" onclick="addToWatchLater(currentVideoId)">
+              <span class="nav-icon" data-icon="bookmark"></span>
+              <span>Save</span>
+            </button>
+          </div>
+
+          <div class="player-description">
+            <p class="video-description collapsed" id="videoDescriptionText"></p>
+            <button type="button" class="text-button" id="descriptionToggleBtn">Show more</button>
+          </div>
+
+          <div class="comments-shell">
+            <h3>Comments</h3>
+            <form id="commentForm" class="comment-form">
+              <img id="commentUserAvatar" src="https://ui-avatars.com/api/?name=User&background=ff4444&color=fff" alt="Comment avatar" />
+              <input type="text" id="commentInput" placeholder="Add a comment..." />
+              <button type="submit" class="upload-trigger">Comment</button>
+            </form>
+            <div id="commentsList" class="comments-list"></div>
+          </div>
+        </div>
       </div>
+
+      <aside class="player-page__right">
+        <div class="up-next-header">
+          <h3>Up next</h3>
+          <p>Related videos</p>
+        </div>
+        <div id="relatedVideosList" class="related-list"></div>
+      </aside>
     </div>
-  </main>
+  </div>
 
-  <!-- Messages -->
-  <div id="errorMessage" class="fixed bottom-4 right-4 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg hidden"></div>
-  <div id="successMessage" class="fixed bottom-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg hidden"></div>
+  <div class="toast-stack" id="toastStack"></div>
+  <div id="errorMessage" class="hidden"></div>
+  <div id="successMessage" class="hidden"></div>
 
-  <!-- Scripts -->
+  <nav class="bottom-nav">
+    <button type="button" onclick="showSection('homeSection')">
+      <span class="nav-icon" data-icon="home"></span>
+      <span>Home</span>
+    </button>
+    <button type="button" onclick="document.getElementById('searchInput').focus()">
+      <span class="nav-icon" data-icon="search"></span>
+      <span>Search</span>
+    </button>
+    <button type="button" onclick="showUploadModal()">
+      <span class="nav-icon" data-icon="upload"></span>
+      <span>Upload</span>
+    </button>
+    <button type="button" onclick="showSection('watchLaterSection')">
+      <span class="nav-icon" data-icon="bookmark"></span>
+      <span>Library</span>
+    </button>
+    <button type="button" onclick="showSection('profileSection')">
+      <span class="nav-icon" data-icon="user"></span>
+      <span>Profile</span>
+    </button>
+  </nav>
+
   <script src="js/app.js"></script>
 </body>
 </html>

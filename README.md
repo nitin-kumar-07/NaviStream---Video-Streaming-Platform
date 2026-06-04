@@ -1,169 +1,353 @@
- NaviStream – Cloud-Based Video Streaming Platform
+# NaviStream - Cloud Video Streaming Platform
 
-NaviStream is a full-stack web application that allows users to upload, stream, like, and manage videos securely using cloud infrastructure. It features user authentication, MongoDB Atlas for storage, and Cloudinary for media hosting.
+NaviStream is a full-stack web application where users can register, upload videos, stream videos, like, comment, manage playlists, and maintain a watch-later list. The platform uses cloud-based storage for media and a NoSQL database for metadata.
 
+This document explains the complete project in detail: what we built, how we built it, which code files are responsible for each feature, and how to present it clearly in interviews.
 
-🚀 Features
+## 1) Project Overview
 
-🔐 User Authentication (Register / Login / Logout)
+### Core Objective
 
-📄 Video Upload using Cloudinary
+Build a secure and scalable video platform with:
 
-🎮 Video Streaming directly from Cloudinary
+- user authentication and authorization
+- cloud video upload and streaming
+- content discovery (search, trending, category filters)
+- social engagement (likes, comments, subscriptions)
+- personal organization (watch later, playlists, profile)
 
-💬 Video Metadata (title, description, thumbnail, category)
+### High-Level Architecture
 
-❤️ Like & Watch Later Functionality
+- **Frontend:** Vanilla HTML, CSS, JavaScript
+- **Backend:** Node.js + Express
+- **Database:** MongoDB Atlas via Mongoose
+- **Media Storage/CDN:** Cloudinary
+- **Authentication:** JWT + bcryptjs
 
-🔎 Search & Recommendations
+Data flow:
 
-🗞️ MongoDB Atlas Integration
+1. User action in browser triggers API call.
+2. Express route validates request and authenticates user if protected.
+3. Mongoose reads/writes metadata in MongoDB.
+4. Cloudinary stores/serves actual video files.
+5. Frontend updates UI dynamically with JSON response.
 
-📁 JWT-based Route Protection
+## 2) Tech Stack and Libraries
 
+Dependencies are defined in `package.json`.
 
+### Backend Libraries
 
-🌟 Project Objective
+- `express`: HTTP server and API routing
+- `mongoose`: MongoDB ODM (schemas, validation, model methods)
+- `jsonwebtoken`: token creation and verification
+- `bcryptjs`: password hashing
+- `multer`: multipart file handling
+- `cloudinary`: cloud media upload and delivery
+- `cors`: cross-origin policy setup
+- `dotenv`: environment variable management
 
-To build a secure, scalable video platform that enables users to upload and stream videos using cloud-based technologies like MongoDB Atlas and Cloudinary.
+### Dev Tools
 
+- `nodemon`: auto-restart backend in development
 
+### Frontend
 
-💻 Frontend Implementation
+- plain `index.html` for structure
+- `styles/main.css` for responsive styling and theme system
+- `js/app.js` for all client-side state, API calls, rendering, and event logic
 
-Pure HTML, CSS, and JavaScript (no frameworks)
+## 3) Folder and File Responsibilities
 
-Communicates with backend using fetch()
+### Root Files
 
-Dynamically renders video cards, thumbnails, likes, and categories
+- `server.js` - full backend app: middleware, DB connection, API endpoints
+- `index.html` - complete UI layout: sidebar, sections, modals, player
+- `js/app.js` - frontend behavior and API integration
+- `styles/main.css` - complete visual design and responsive rules
+- `package.json` - scripts and dependencies
+- `README.md` - complete project documentation
 
+### Backend Support Folders
 
+- `models/User.js` - user schema and user methods
+- `models/Video.js` - video schema, comment subdocument, video methods
+- `models/Playlist.js` - playlist schema and methods
+- `middleware/auth.js` - JWT route-protection middleware
 
-🚜 Backend Implementation
+### Runtime/Upload Folder
 
-Express.js handles API routing
+- `uploads/` - temporary local storage before upload to Cloudinary
 
-Middleware: auth.js verifies JWT tokens
+## 4) Environment Variables
 
-Endpoints:
+Create `.env` in project root:
 
-/api/auth/register
-/api/auth/login
-/api/videos/upload
-/api/videos, /api/videos/search, etc.
+```env
+PORT=3001
+NODE_ENV=development
+MONGODB_URI=mongodb+srv://<username>:<password>@<cluster>/<db-name>
+JWT_SECRET=your_secure_jwt_secret
+CLOUDINARY_CLOUD_NAME=your_cloud_name
+CLOUDINARY_API_KEY=your_api_key
+CLOUDINARY_API_SECRET=your_api_secret
+FRONTEND_URL=http://localhost:3000
+```
 
-Uses multer-storage-cloudinary to handle video uploads
+Notes:
 
+- `JWT_SECRET` is required for token signing/verification.
+- Cloudinary keys are required for upload and video delivery.
+- In production, set `NODE_ENV=production` and configure `FRONTEND_URL`.
 
+## 5) How We Built The Project (Step-by-Step)
 
-📂 MongoDB Atlas
+### Step 1: Backend Foundation
 
-Stores users and video metadata
+In `server.js`:
 
-Cloud-based, secure NoSQL database
+- loaded env vars with `dotenv`
+- initialized Express app
+- configured CORS, body parsers, static file serving
+- added request timeout middleware
+- connected MongoDB with retry logic using `connectDB()`
 
-Connection handled by Mongoose
+### Step 2: Data Modeling
 
-await mongoose.connect(process.env.MONGODB_URI, {...})
+Implemented Mongoose schemas:
 
+- `User` for auth/profile/subscription/watch-later/playlist references
+- `Video` for title, description, URL, thumbnail, category, views, likes, comments
+- `Playlist` for named collections of videos
 
+Added model methods to keep business logic close to data:
 
+- `User.comparePassword`, `User.createPlaylist`, `User.addToWatchLater`
+- `Video.toggleLike`, `Video.isLikedBy`, `Video.addComment`, `Video.removeComment`
+- `Playlist.addVideo`, `Playlist.removeVideo`
 
-☁️ Cloudinary Integration
+### Step 3: Authentication System
 
-Stores uploaded video files securely
+Built auth endpoints:
 
-Returns video url, public_id, and allows thumbnail access
+- `POST /api/auth/register`
+- `POST /api/auth/login`
+- `GET /api/auth/me`
 
-Used in <video> tags on the frontend
+Security implementation:
 
+- password hashing with bcrypt pre-save hook
+- JWT token generated on register/login
+- protected routes via middleware that reads `Authorization: Bearer <token>`
 
+### Step 4: Video Upload and Cloudinary Integration
 
-🔐 Authentication
+Upload pipeline in `/api/videos/upload`:
 
-JWT is generated during login
+1. `multer` stores video temporarily in `uploads/`
+2. backend uploads file to Cloudinary (`resource_type: "video"`)
+3. Cloudinary returns secure URL + `public_id`
+4. thumbnail URL generated from Cloudinary transformation
+5. video metadata saved in MongoDB
+6. temporary local file deleted
 
-Protected routes verify token using middleware
+### Step 5: Video Discovery and Engagement APIs
 
-Passwords are hashed using bcryptjs
+Built endpoints for:
 
+- all videos + sorting + category filtering
+- search by title/description
+- trending list
+- recommendations
+- like/unlike
+- view increment
+- comments create/delete
 
+### Step 6: User-Centric Features
 
+Added:
 
-📷 Upload & Streaming Flow
+- my videos
+- liked videos
+- watch later
+- playlists (create/list/add video)
+- profile read/update
+- subscribe/unsubscribe to creators
 
-User selects video
+### Step 7: Frontend Application Logic
 
-Video uploaded to Cloudinary
+In `js/app.js`:
 
-Metadata saved in MongoDB
+- created `Auth` class to manage token and user state
+- wired form handlers (login/register/upload/comment)
+- built dynamic section rendering with `showSection()`
+- implemented card rendering with `createVideoCard()`
+- built player modal with related videos and action buttons
+- added upload progress bar using `XMLHttpRequest`
 
-Videos streamed via Cloudinary URLs
+### Step 8: UI and Responsive Design
 
+In `styles/main.css`:
 
+- CSS variables for dark/light themes
+- desktop sidebar + mobile bottom nav
+- card layouts, player page, modals, toasts, skeleton loaders
+- responsive breakpoints for tablet/mobile
 
-🛠️ Tech Stack
+## 6) API Endpoints (Implemented)
 
-🌐 Frontend:
+### Authentication
 
-HTML, CSS, Vanilla JS
+- `POST /api/auth/register`
+- `POST /api/auth/login`
+- `GET /api/auth/me` (protected)
 
-Responsive Design
+### Videos
 
+- `POST /api/videos/upload` (protected)
+- `GET /api/videos`
+- `GET /api/videos/trending`
+- `GET /api/videos/recommendations`
+- `GET /api/videos/my-videos` (protected)
+- `GET /api/videos/liked` (protected)
+- `GET /api/videos/search`
+- `GET /api/videos/advanced-search`
+- `PUT /api/videos/:id` (protected, owner)
+- `DELETE /api/videos/:id` (protected, owner)
+- `POST /api/videos/:videoId/like` (protected)
+- `POST /api/videos/:videoId/view` (protected)
 
+### Comments
 
+- `POST /api/videos/:videoId/comments` (protected)
+- `DELETE /api/videos/:videoId/comments/:commentId` (protected)
 
-🔧 Backend:
+### Watch Later
 
-Node.js + Express.js
+- `POST /api/videos/:id/watch-later` (protected)
+- `POST /api/videos/:videoId/watch-later` (protected)
+- `GET /api/watch-later` (protected)
 
-MongoDB Atlas via Mongoose
+### Playlists
 
-Cloudinary (via multer-storage-cloudinary)
+- `POST /api/playlists` (protected)
+- `GET /api/playlists` (protected)
+- `POST /api/playlists/:playlistId/videos` (protected)
 
-JWT for Authentication
+### Users
 
-bcryptjs for Password Hashing
+- `PUT /api/users/profile` (protected)
+- `GET /api/users/:userId`
+- `POST /api/users/:id/subscribe` (protected)
 
+## 7) Frontend Features and Their Code Areas
 
+### Auth UI and State
 
+- `Auth` class, `checkAuth()`, `setupAuthModal()`
 
-📁 Folder Structure (Explained)
+### Video Feed
 
-📆 NaviStream/
+- `loadHomeVideos()`, `displayVideos()`, `createVideoCard()`
 
-🔹 models/
+### Search/Filter/Sort
 
-🔹   User.js               # Mongoose schema for user data
+- `searchVideos()`, `syncCategoryPills()`, `loadHomeVideos()` query params
 
-🔹   Video.js              # Mongoose schema for video metadata
+### Upload
 
-🔹 middleware/
+- `showUploadModal()`, `handleUploadSubmit()`, `uploadWithProgress()`
 
-🔹   auth.js               # JWT auth middleware
+### Player and Engagement
 
-🔹 public/
+- `showVideoPlayer()`, `likeVideo()`, `incrementViewCount()`, `shareVideo()`
 
-🔹   index.html            # Main frontend HTML page
+### Comments
 
-🔹   css/
+- `loadComments()`, `addComment()`, `deleteComment()`
 
-🔹     style.css           # Stylesheet
+### Library Features
 
-🔹   js/
+- `loadLikedVideos()`, `loadWatchLater()`, `loadPlaylists()`, `createPlaylist()`
 
-🔹     main.js             # UI + event logic
+### Profile
 
-🔹     auth.js             # Login/register logic
+- `loadUserProfile()`, `displayUserProfile()`
 
-🔹     videoService.js     # API calls for videos
+## 8) Security and Validation
 
-🔹     ui.js               # UI rendering functions
+- JWT-protected routes for sensitive actions
+- password hashing before save
+- basic request validation in auth and upload endpoints
+- file type filtering in `multer`
+- file size limit (500MB)
+- schema validation constraints (`required`, `enum`, `maxlength`, etc.)
 
-🔹 .env                   # Environment variables (secret keys)
+## 9) Key Engineering Decisions
 
-🔹 server.js              # Main backend server
+### Why MongoDB + Mongoose?
 
-🔹 package.json           # Node project info
+- flexible schema evolution for social features and nested comments
+- direct support for arrays and ObjectId references
 
-🔹 README.md              # Project documentation
+### Why Cloudinary?
+
+- stores large media files outside app server
+- provides permanent secure URLs and global delivery
+- supports transformations (thumbnail generation)
+
+### Why Vanilla JS Frontend?
+
+- direct control over DOM and state logic
+- demonstrates core frontend fundamentals without framework abstraction
+
+## 10) Known Integration Notes
+
+Current codebase has some practical notes to remember:
+
+- Backend default port is `3001` while frontend `API_URL` is currently `http://localhost:5000/api`.
+- Frontend comment loader expects `GET /api/videos/:videoId`, but this specific endpoint is not currently defined.
+- Watch-later has two POST routes with slightly different behavior.
+
+These are common final-integration cleanup tasks and are easy to align in a polishing pass.
+
+## 11) Installation and Run
+
+### Prerequisites
+
+- Node.js (14+ recommended)
+- MongoDB Atlas cluster
+- Cloudinary account
+
+### Commands
+
+```bash
+npm install
+npm run dev
+```
+
+or:
+
+```bash
+npm start
+```
+
+Open in browser:
+
+```text
+http://localhost:3001
+```
+
+## 12) Interview-Ready Explanation (Short Version)
+
+NaviStream is a full-stack cloud video streaming platform built with Vanilla JS, Express, MongoDB, and Cloudinary. We implemented secure JWT authentication, cloud-based upload/streaming, metadata persistence with Mongoose models, and interactive social features like likes, comments, playlists, subscriptions, and watch later. The frontend is a dynamic SPA-style interface with sections, modals, player controls, and responsive design. The backend exposes RESTful endpoints, handles authorization, validates data, and integrates cloud upload with local temp-file cleanup.
+
+## 13) Future Enhancements
+
+- add pagination and infinite scroll
+- add refresh tokens and token expiry management
+- add rate limiting and request throttling
+- modularize server routes/controllers/services
+- add test coverage (unit + integration + API)
+- add video details endpoint and align frontend API base URL
+- improve recommendation algorithm and analytics

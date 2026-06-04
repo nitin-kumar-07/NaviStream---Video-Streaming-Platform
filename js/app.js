@@ -1,142 +1,60 @@
-// Global variables
 let currentUser = null;
 let currentVideoId = null;
+let currentVideoData = null;
+let currentSection = "homeSection";
+let lastHomeVideos = [];
+let lastSearchTerm = "";
+let currentTheme = localStorage.getItem("navistream-theme") || "dark";
 
-// API configuration
-const API_URL = 'http://localhost:3001/api';
+const API_URL = "http://localhost:5000/api";
+const ui = {};
 
-// Auth class
 class Auth {
   constructor() {
-    this.token = localStorage.getItem('token');
-    this.user = JSON.parse(localStorage.getItem('user'));
+    this.token = localStorage.getItem("token");
+    this.user = JSON.parse(localStorage.getItem("user"));
   }
 
   async register(username, email, password) {
-    try {
-      console.log('Attempting registration with:', { 
-        username, 
-        email, 
-        password: password ? '[HIDDEN]' : 'undefined' 
-      });
-      
-      if (!username || !email || !password) {
-        throw new Error('All fields are required');
-      }
-
-      const response = await fetch(`${API_URL}/auth/register`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ username, email, password })
-      });
-
-      console.log('Register response status:', response.status);
-      console.log('Register response headers:', Object.fromEntries(response.headers.entries()));
-
-      const data = await response.json();
-      console.log('Register response data:', data);
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Registration failed');
-      }
-
-      // Check for success field in response
-      if (!data.success) {
-        throw new Error(data.error || 'Registration failed');
-      }
-
-      if (!data.token || !data.user) {
-        throw new Error('Invalid response from server');
-      }
-
-      this.setAuth(data);
-      console.log('Registration successful, auth set:', { 
-        hasToken: !!this.token, 
-        hasUser: !!this.user,
-        user: this.user 
-      });
-      return data;
-    } catch (error) {
-      console.error('Registration error:', error);
-      throw error;
+    const response = await fetch(`${API_URL}/auth/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, email, password }),
+    });
+    const data = await response.json();
+    if (!response.ok || !data.success) {
+      throw new Error(data.error || "Registration failed");
     }
+    this.setAuth(data);
+    return data;
   }
 
   async login(email, password) {
-    try {
-      console.log('Attempting login with:', { email, password: password ? '[HIDDEN]' : 'undefined' });
-      
-      if (!email || !password) {
-        throw new Error('Email and password are required');
-      }
-
-      const response = await fetch(`${API_URL}/auth/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ email, password })
-      });
-
-      console.log('Login response status:', response.status);
-      console.log('Login response headers:', Object.fromEntries(response.headers.entries()));
-
-      const data = await response.json();
-      console.log('Login response data:', data);
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Login failed');
-      }
-
-      // Check for success field in response
-      if (!data.success) {
-        throw new Error(data.error || 'Login failed');
-      }
-
-      if (!data.token || !data.user) {
-        throw new Error('Invalid response from server');
-      }
-
-      this.setAuth(data);
-      console.log('Login successful, auth set:', { 
-        hasToken: !!this.token, 
-        hasUser: !!this.user,
-        user: this.user 
-      });
-      return data;
-    } catch (error) {
-      console.error('Login error:', error);
-      throw error;
+    const response = await fetch(`${API_URL}/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+    const data = await response.json();
+    if (!response.ok || !data.success) {
+      throw new Error(data.error || "Login failed");
     }
+    this.setAuth(data);
+    return data;
   }
 
   logout() {
     this.token = null;
     this.user = null;
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    window.location.href = '/';
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
   }
 
   setAuth(data) {
-    console.log('Setting auth data:', { 
-      hasToken: !!data.token, 
-      hasUser: !!data.user,
-      user: data.user 
-    });
-    
     this.token = data.token;
     this.user = data.user;
-    localStorage.setItem('token', data.token);
-    localStorage.setItem('user', JSON.stringify(data.user));
-    
-    console.log('Auth data set successfully');
-  }
-
-  isAuthenticated() {
-    return !!this.token;
+    localStorage.setItem("token", data.token);
+    localStorage.setItem("user", JSON.stringify(data.user));
   }
 
   getAuthHeader() {
@@ -144,118 +62,210 @@ class Auth {
   }
 }
 
-// Video service class
-class VideoService {
-  async uploadVideo(formData) {
-    try {
-      console.log('VideoService.uploadVideo called');
-      console.log('FormData entries:');
-      for (let [key, value] of formData.entries()) {
-        if (value instanceof File) {
-          console.log(`${key}: File(${value.name}, ${value.size} bytes, ${value.type})`);
-        } else {
-          console.log(`${key}: ${value}`);
-        }
-      }
-
-      const headers = auth.getAuthHeader();
-      console.log('Auth headers:', headers);
-
-      const response = await fetch(`${API_URL}/videos/upload`, {
-        method: 'POST',
-        headers: {
-          ...headers
-          // Don't set Content-Type for FormData, let browser set it with boundary
-        },
-        body: formData
-      });
-
-      console.log('Upload response status:', response.status);
-      console.log('Upload response headers:', Object.fromEntries(response.headers.entries()));
-
-      const data = await response.json();
-      console.log('Upload response data:', data);
-
-      if (!response.ok) {
-        throw new Error(data.error || data.details || 'Upload failed');
-      }
-
-      return data;
-    } catch (error) {
-      console.error('VideoService upload error:', error);
-      throw error;
-    }
-  }
-
-  async searchVideos(query) {
-    try {
-      const response = await fetch(`${API_URL}/videos/search?q=${encodeURIComponent(query)}`);
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error);
-      return data;
-    } catch (error) {
-      throw error;
-    }
-  }
-}
-
-// Initialize auth and video service
 const auth = new Auth();
-const videoService = new VideoService();
 
-// DOM Elements
-let searchInput, sortSelect, categoryFilter, loginButton, userProfileSection, userAvatar, userMenu;
+document.addEventListener("DOMContentLoaded", async () => {
+  cacheDom();
+  hydrateIcons();
+  decorateCategoryPills();
+  applyTheme(currentTheme);
+  checkAuth();
+  setupEventListeners();
 
-// Initialize
-document.addEventListener('DOMContentLoaded', async function() {
-  console.log('🚀 Initializing NaviStream...');
-  
-  // Initialize DOM elements
-  searchInput = document.getElementById('searchInput');
-  sortSelect = document.getElementById('sortSelect');
-  categoryFilter = document.getElementById('categoryFilter');
-  loginButton = document.getElementById('loginButton');
-  userProfileSection = document.getElementById('userProfileSection');
-  userAvatar = document.getElementById('userAvatar');
-  userMenu = document.getElementById('userMenu');
-  
-  console.log('🔍 DOM elements initialized:', {
-    searchInput: !!searchInput,
-    sortSelect: !!sortSelect,
-    categoryFilter: !!categoryFilter,
-    loginButton: !!loginButton,
-    userProfileSection: !!userProfileSection,
-    userAvatar: !!userAvatar,
-    userMenu: !!userMenu
-  });
-  
-  // Test API connectivity first
   const apiWorking = await testAPIConnectivity();
   if (!apiWorking) {
-    console.error('❌ API connectivity test failed - check server status');
-    showError('Cannot connect to server. Please check if the server is running.');
+    showToast("Cannot connect to server. Please check if the backend is running.", "error");
     return;
   }
-  
-  // Check authentication status
-  checkAuth();
-  
-  // Setup event listeners
-  setupEventListeners();
-  
-  // Load initial content
-  loadHomeVideos();
-  
-  console.log('✅ NaviStream initialized successfully');
+
+  await loadHomeVideos();
 });
 
+function cacheDom() {
+  ui.searchInput = document.getElementById("searchInput");
+  ui.sortSelect = document.getElementById("sortSelect");
+  ui.categoryFilter = document.getElementById("categoryFilter");
+  ui.loginButton = document.getElementById("loginButton");
+  ui.userProfileSection = document.getElementById("userProfileSection");
+  ui.userAvatar = document.getElementById("userAvatar");
+  ui.userMenu = document.getElementById("userMenu");
+  ui.sidebar = document.getElementById("sidebar");
+  ui.appMain = document.getElementById("appMain");
+  ui.topbar = document.getElementById("topbar");
+  ui.toastStack = document.getElementById("toastStack");
+  ui.uploadModal = document.getElementById("uploadModal");
+  ui.uploadStatus = document.getElementById("uploadStatus");
+  ui.uploadSubmitBtn = document.getElementById("uploadSubmitBtn");
+  ui.fileInput = document.getElementById("fileInput");
+  ui.videoTitle = document.getElementById("videoTitle");
+  ui.uploadDropzone = document.getElementById("uploadDropzone");
+  ui.descriptionToggleBtn = document.getElementById("descriptionToggleBtn");
+  ui.videoDescriptionText = document.getElementById("videoDescriptionText");
+  ui.dislikeButton = document.getElementById("dislikeButton");
+  ui.commentInput = document.getElementById("commentInput");
+  ui.commentUserAvatar = document.getElementById("commentUserAvatar");
+}
+
+function setupEventListeners() {
+  let searchTimeout;
+  ui.searchInput?.addEventListener("input", (event) => {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+      searchVideos(event.target.value.trim());
+    }, 300);
+  });
+
+  ui.sortSelect?.addEventListener("change", () => {
+    if (currentSection === "homeSection") loadHomeVideos();
+  });
+
+  ui.categoryFilter?.addEventListener("change", () => {
+    syncCategoryPills(ui.categoryFilter.value);
+    if (currentSection === "homeSection") loadHomeVideos();
+  });
+
+  document.getElementById("uploadForm")?.addEventListener("submit", handleUploadSubmit);
+  ui.fileInput?.addEventListener("change", handleFileSelect);
+  ui.videoTitle?.addEventListener("input", updateUploadSubmitState);
+
+  ui.uploadDropzone?.addEventListener("dragover", (event) => {
+    event.preventDefault();
+    ui.uploadDropzone.classList.add("is-dragging");
+  });
+  ui.uploadDropzone?.addEventListener("dragleave", () => {
+    ui.uploadDropzone.classList.remove("is-dragging");
+  });
+  ui.uploadDropzone?.addEventListener("drop", (event) => {
+    event.preventDefault();
+    ui.uploadDropzone.classList.remove("is-dragging");
+    if (event.dataTransfer?.files?.length) {
+      ui.fileInput.files = event.dataTransfer.files;
+      handleFileSelect({ target: ui.fileInput });
+    }
+  });
+
+  document.getElementById("commentForm")?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const text = ui.commentInput?.value.trim();
+    if (!currentUser) return showToast("Please login to comment.", "error");
+    if (!text) return showToast("Please enter a comment.", "error");
+    await addComment(currentVideoId, text);
+  });
+
+  ui.descriptionToggleBtn?.addEventListener("click", toggleDescription);
+  ui.dislikeButton?.addEventListener("click", () => {
+    ui.dislikeButton.classList.toggle("is-active");
+    showToast("Dislike saved for this session.", "info");
+  });
+
+  document.querySelectorAll(".category-pill").forEach((pill) => {
+    pill.addEventListener("click", () => {
+      const value = pill.dataset.value || "";
+      ui.categoryFilter.value = value;
+      syncCategoryPills(value);
+      if (currentSection !== "homeSection") showSection("homeSection");
+      else loadHomeVideos();
+    });
+  });
+
+  window.addEventListener("scroll", () => {
+    ui.topbar?.classList.toggle("is-scrolled", window.scrollY > 20);
+  });
+
+  document.addEventListener("click", (event) => {
+    if (ui.userMenu && ui.userProfileSection && !ui.userProfileSection.contains(event.target)) {
+      ui.userMenu.classList.add("hidden");
+    }
+  });
+
+  document.querySelectorAll(".modal-shell, .player-shell").forEach((modal) => {
+    modal.addEventListener("click", (event) => {
+      if (event.target !== modal) return;
+      if (modal.id === "authModal") hideAuthModal();
+      if (modal.id === "uploadModal") hideUploadModal();
+      if (modal.id === "videoPlayerModal") hideVideoPlayer();
+    });
+  });
+
+  setupAuthModal();
+}
+
+function decorateCategoryPills() {
+  document.querySelectorAll(".category-pill").forEach((pill) => {
+    const icon = pill.dataset.icon;
+    const label = pill.textContent.trim();
+    pill.innerHTML = `${iconMarkup(icon)}<span class="pill-label">${label}</span>`;
+  });
+}
+
+function setupAuthModal() {
+  const authTabs = document.querySelectorAll(".auth-tab");
+  const loginForm = document.getElementById("loginForm");
+  const registerForm = document.getElementById("registerForm");
+
+  authTabs.forEach((tab) => {
+    tab.addEventListener("click", () => {
+      const tabName = tab.dataset.tab;
+      authTabs.forEach((item) => item.classList.remove("active"));
+      tab.classList.add("active");
+      loginForm.classList.toggle("hidden", tabName !== "login");
+      registerForm.classList.toggle("hidden", tabName !== "register");
+    });
+  });
+
+  loginForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const button = loginForm.querySelector('button[type="submit"]');
+    const originalText = button.textContent;
+    button.disabled = true;
+    button.textContent = "Logging in...";
+    try {
+      await auth.login(
+        document.getElementById("loginEmail").value.trim(),
+        document.getElementById("loginPassword").value,
+      );
+      currentUser = auth.user;
+      updateUIForLoggedInUser();
+      hideAuthModal();
+      showToast("Logged in successfully.", "success");
+      await loadHomeVideos();
+    } catch (error) {
+      showFormError(loginForm, error.message || "Login failed.");
+    } finally {
+      button.disabled = false;
+      button.textContent = originalText;
+    }
+  });
+
+  registerForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const button = registerForm.querySelector('button[type="submit"]');
+    const originalText = button.textContent;
+    button.disabled = true;
+    button.textContent = "Registering...";
+    try {
+      await auth.register(
+        document.getElementById("registerUsername").value.trim(),
+        document.getElementById("registerEmail").value.trim(),
+        document.getElementById("registerPassword").value,
+      );
+      currentUser = auth.user;
+      updateUIForLoggedInUser();
+      hideAuthModal();
+      showToast("Welcome to NaviStream.", "success");
+      await loadHomeVideos();
+    } catch (error) {
+      showFormError(registerForm, error.message || "Registration failed.");
+    } finally {
+      button.disabled = false;
+      button.textContent = originalText;
+    }
+  });
+}
+
 function checkAuth() {
-  console.log('🔐 Checking authentication...');
-  const token = localStorage.getItem('token');
-  const user = JSON.parse(localStorage.getItem('user'));
-  
-  console.log('Auth check:', { hasToken: !!token, hasUser: !!user });
-  
+  const token = localStorage.getItem("token");
+  const user = JSON.parse(localStorage.getItem("user"));
   if (token && user) {
     currentUser = user;
     updateUIForLoggedInUser();
@@ -265,1537 +275,1020 @@ function checkAuth() {
 }
 
 function updateUIForLoggedInUser() {
-  console.log('👤 Updating UI for logged in user:', currentUser);
-  if (loginButton) loginButton.classList.add('hidden');
-  if (userProfileSection) userProfileSection.classList.remove('hidden');
-  if (userAvatar) userAvatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser?.username || 'Guest')}&background=6B4EFF&color=fff`;
+  ui.loginButton?.classList.add("hidden");
+  ui.userProfileSection?.classList.remove("hidden");
+  if (ui.userAvatar) {
+    ui.userAvatar.src = avatarUrl(currentUser?.username || "Guest");
+  }
+  if (ui.commentUserAvatar) {
+    ui.commentUserAvatar.src = avatarUrl(currentUser?.username || "User");
+  }
 }
 
 function updateUIForLoggedOutUser() {
-  console.log('👤 Updating UI for logged out user');
-  if (loginButton) loginButton.classList.remove('hidden');
-  if (userProfileSection) userProfileSection.classList.add('hidden');
+  ui.loginButton?.classList.remove("hidden");
+  ui.userProfileSection?.classList.add("hidden");
 }
 
-function setupEventListeners() {
-  console.log('🎧 Setting up event listeners...');
-  
-  try {
-    // Search functionality
-    if (searchInput) {
-      let searchTimeout;
-      searchInput.addEventListener('input', (e) => {
-        clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(() => {
-          searchVideos(e.target.value);
-        }, 300);
-      });
-      console.log('✅ Search input listener added');
-    }
-
-    // Sort and filter
-    if (sortSelect) {
-      sortSelect.addEventListener('change', loadHomeVideos);
-      console.log('✅ Sort select listener added');
-    }
-    
-    if (categoryFilter) {
-      categoryFilter.addEventListener('change', loadHomeVideos);
-      console.log('✅ Category filter listener added');
-    }
-
-    // Upload form
-    const uploadForm = document.getElementById('uploadForm');
-    if (uploadForm) {
-      uploadForm.addEventListener('submit', handleUploadSubmit);
-      console.log('✅ Upload form listener added');
-    }
-
-    // File input
-    const fileInput = document.getElementById('fileInput');
-    if (fileInput) {
-      fileInput.addEventListener('change', handleFileSelect);
-      console.log('✅ File input listener added');
-    }
-
-    // Comment form
-    const commentForm = document.getElementById('commentForm');
-    if (commentForm) {
-      commentForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const commentInput = document.getElementById('commentInput');
-        const text = commentInput.value.trim();
-        
-        if (!text) {
-          showError('Please enter a comment');
-          return;
-        }
-        
-        if (!currentUser) {
-          showError('Please login to comment');
-          return;
-        }
-        
-        addComment(currentVideoId, text);
-      });
-      console.log('✅ Comment form listener added');
-    }
-
-    // Auth modal
-    setupAuthModal();
-    console.log('✅ Auth modal setup complete');
-    
-  } catch (error) {
-    console.error('❌ Error setting up event listeners:', error);
-  }
-}
-
-function setupAuthModal() {
-  console.log('🔐 Setting up auth modal...');
-  
-  try {
-    const authModal = document.getElementById('authModal');
-    const authTabs = document.querySelectorAll('.auth-tab');
-    const loginForm = document.getElementById('loginForm');
-    const registerForm = document.getElementById('registerForm');
-
-    console.log('🔍 Auth modal elements:', {
-      authModal: !!authModal,
-      authTabs: authTabs.length,
-      loginForm: !!loginForm,
-      registerForm: !!registerForm
-    });
-
-    if (!authModal) {
-      console.error('❌ Auth modal not found!');
-      return;
-    }
-
-    if (!loginForm) {
-      console.error('❌ Login form not found!');
-      return;
-    }
-
-    // Tab switching
-    authTabs.forEach(tab => {
-      tab.addEventListener('click', () => {
-        const tabName = tab.dataset.tab;
-        authTabs.forEach(t => t.classList.remove('active'));
-        tab.classList.add('active');
-        
-        if (tabName === 'login') {
-          loginForm.classList.remove('hidden');
-          registerForm.classList.add('hidden');
-        } else {
-          loginForm.classList.add('hidden');
-          registerForm.classList.remove('hidden');
-        }
-      });
-    });
-
-    // Login form
-    loginForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      console.log('📝 Login form submitted');
-      
-      const email = document.getElementById('loginEmail').value;
-      const password = document.getElementById('loginPassword').value;
-
-      console.log('📋 Form values:', { 
-        email: email || 'empty', 
-        password: password ? '[HIDDEN]' : 'empty',
-        emailLength: email?.length,
-        passwordLength: password?.length
-      });
-
-      // Clear previous error messages
-      const errorElements = loginForm.querySelectorAll('.error-message');
-      errorElements.forEach(el => el.remove());
-
-      // Validate inputs
-      if (!email || !email.trim()) {
-        showFormError(loginForm, 'Email is required');
-        return;
-      }
-
-      if (!password || !password.trim()) {
-        showFormError(loginForm, 'Password is required');
-        return;
-      }
-
-      // Show loading state
-      const submitButton = loginForm.querySelector('button[type="submit"]');
-      const originalText = submitButton?.textContent;
-      if (submitButton) {
-        submitButton.disabled = true;
-        submitButton.textContent = 'Logging in...';
-      }
-
-      try {
-        console.log('🔐 Calling auth.login...');
-        const result = await auth.login(email.trim(), password);
-        console.log('✅ Login result:', result);
-        
-        // Update current user
-        currentUser = auth.user;
-        console.log('👤 Current user set:', currentUser);
-        
-        // Update UI immediately
-        updateUIForLoggedInUser();
-        
-        // Hide modal and show success
-        hideAuthModal();
-        showSuccess('Logged in successfully!');
-        
-        // Reload videos to show user-specific content
-        loadHomeVideos();
-        
-        // Force a small delay to ensure UI updates are visible
-        setTimeout(() => {
-          console.log('🎉 Login flow completed successfully');
-        }, 100);
-        
-      } catch (error) {
-        console.error('❌ Login form error:', error);
-        showFormError(loginForm, error.message || 'Login failed. Please try again.');
-      } finally {
-        // Restore button state
-        if (submitButton) {
-          submitButton.disabled = false;
-          submitButton.textContent = originalText || 'Login';
-        }
-      }
-    });
-    console.log('✅ Login form listener added');
-
-    // Register form
-    if (registerForm) {
-      registerForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        console.log('📝 Register form submitted');
-        
-        const username = document.getElementById('registerUsername').value;
-        const email = document.getElementById('registerEmail').value;
-        const password = document.getElementById('registerPassword').value;
-
-        console.log('📋 Register form values:', { 
-          username: username || 'empty', 
-          email: email || 'empty', 
-          password: password ? '[HIDDEN]' : 'empty'
-        });
-
-        // Clear previous error messages
-        const errorElements = registerForm.querySelectorAll('.error-message');
-        errorElements.forEach(el => el.remove());
-
-        // Validate inputs
-        if (!username || !username.trim()) {
-          showFormError(registerForm, 'Username is required');
-          return;
-        }
-
-        if (!email || !email.trim()) {
-          showFormError(registerForm, 'Email is required');
-          return;
-        }
-
-        if (!password || !password.trim()) {
-          showFormError(registerForm, 'Password is required');
-          return;
-        }
-
-        if (password.length < 6) {
-          showFormError(registerForm, 'Password must be at least 6 characters');
-          return;
-        }
-
-        // Show loading state
-        const submitButton = registerForm.querySelector('button[type="submit"]');
-        const originalText = submitButton?.textContent;
-        if (submitButton) {
-          submitButton.disabled = true;
-          submitButton.textContent = 'Registering...';
-        }
-
-        try {
-          console.log('🔐 Calling auth.register...');
-          const result = await auth.register(username.trim(), email.trim(), password);
-          console.log('✅ Register result:', result);
-          
-          // Update current user
-          currentUser = auth.user;
-          console.log('👤 Current user set:', currentUser);
-          
-          // Update UI immediately
-          updateUIForLoggedInUser();
-          
-          // Hide modal and show success
-          hideAuthModal();
-          showSuccess('Registration successful! Welcome to NaviStream!');
-          
-          // Reload videos to show user-specific content
-          loadHomeVideos();
-          
-        } catch (error) {
-          console.error('❌ Register form error:', error);
-          showFormError(registerForm, error.message || 'Registration failed. Please try again.');
-        } finally {
-          // Restore button state
-          if (submitButton) {
-            submitButton.disabled = false;
-            submitButton.textContent = originalText || 'Register';
-          }
-        }
-      });
-      console.log('✅ Register form listener added');
-    }
-    
-    // Close modal when clicking outside
-    if (authModal) {
-      authModal.addEventListener('click', (e) => {
-        if (e.target === authModal) {
-          console.log('🖱️ Clicked outside modal, hiding...');
-          hideAuthModal();
-        }
-      });
-      console.log('✅ Click outside modal handler added');
-    }
-    
-  } catch (error) {
-    console.error('❌ Error setting up auth modal:', error);
-  }
-}
-
-// Section navigation
 function showSection(sectionId) {
-  console.log('Showing section:', sectionId);
-  
-  // Hide all sections first
-  const sections = [
-    'homeSection',
-    'myVideosSection', 
-    'trendingSection',
-    'likedSection',
-    'playlistsSection',
-    'watchLaterSection',
-    'profileSection',
-    'searchSection'
-  ];
-  
-  sections.forEach(section => {
-    const element = document.getElementById(section);
-    if (element) {
-      element.classList.add('hidden');
-    }
+  currentSection = sectionId;
+  document.querySelectorAll(".view-section").forEach((section) => {
+    section.classList.toggle("hidden", section.id !== sectionId);
   });
-  
-  // Show the selected section
-  const targetSection = document.getElementById(sectionId);
-  if (targetSection) {
-    targetSection.classList.remove('hidden');
-    console.log('✓ Section shown:', sectionId);
-    
-    // Load content based on section
-    switch(sectionId) {
-      case 'homeSection':
-        loadHomeVideos();
-        break;
-      case 'myVideosSection':
-        loadMyVideos();
-        break;
-      case 'trendingSection':
-        loadTrendingVideos();
-        break;
-      case 'likedSection':
-        loadLikedVideos();
-        break;
-      case 'playlistsSection':
-        loadPlaylists();
-        break;
-      case 'watchLaterSection':
-        loadWatchLater();
-        break;
-      case 'profileSection':
-        loadUserProfile();
-        break;
-      case 'searchSection':
-        // Search section is handled by search input
-        break;
-    }
-  } else {
-    console.error('❌ Section not found:', sectionId);
-  }
-  
-  // Update active state in sidebar
   updateSidebarActiveState(sectionId);
+  if (window.innerWidth <= 768) {
+    ui.sidebar?.classList.remove("mobile-open");
+  }
+
+  switch (sectionId) {
+    case "homeSection":
+      loadHomeVideos();
+      break;
+    case "myVideosSection":
+      loadMyVideos();
+      break;
+    case "trendingSection":
+      loadTrendingVideos();
+      break;
+    case "likedSection":
+      loadLikedVideos();
+      break;
+    case "playlistsSection":
+      loadPlaylists();
+      break;
+    case "watchLaterSection":
+      loadWatchLater();
+      break;
+    case "profileSection":
+      loadUserProfile();
+      break;
+    default:
+      break;
+  }
 }
 
 function updateSidebarActiveState(activeSectionId) {
-  // Remove active class from all sidebar items
-  const sidebarItems = document.querySelectorAll('.sidebar a');
-  sidebarItems.forEach(item => {
-    item.classList.remove('bg-primary', 'text-white');
-    item.classList.add('text-gray-700', 'dark:text-gray-300');
+  document.querySelectorAll(".sidebar-item").forEach((item) => {
+    item.classList.toggle("is-active", item.dataset.section === activeSectionId);
   });
-  
-  // Add active class to current section
-  const activeItem = document.querySelector(`[onclick="showSection('${activeSectionId}')"]`);
-  if (activeItem) {
-    activeItem.classList.remove('text-gray-700', 'dark:text-gray-300');
-    activeItem.classList.add('bg-primary', 'text-white');
-  }
 }
 
-// Upload functionality
 function showUploadModal() {
-  console.log('📤 Showing upload modal');
-  
-  if (!currentUser) {
-    showError('Please login to upload videos');
-    return;
-  }
-  
-  const modal = document.getElementById('uploadModal');
-  const submitBtn = document.getElementById('uploadSubmitBtn');
-  const uploadStatus = document.getElementById('uploadStatus');
-  
-  if (modal) {
-    modal.classList.remove('hidden');
-    modal.classList.add('flex');
-    
-    // Reset form and button state
-    const form = document.getElementById('uploadForm');
-    if (form) form.reset();
-    
-    if (submitBtn) {
-      submitBtn.disabled = true;
-      submitBtn.textContent = 'Upload Video';
-    }
-    
-    if (uploadStatus) {
-      uploadStatus.innerHTML = '';
-    }
-    
-    console.log('✅ Upload modal shown');
-  } else {
-    console.error('❌ Upload modal not found');
-  }
+  if (!currentUser) return showToast("Please login to upload videos.", "error");
+  ui.uploadModal?.classList.remove("hidden");
+  document.getElementById("uploadForm")?.reset();
+  if (ui.uploadStatus) ui.uploadStatus.innerHTML = "";
+  updateUploadSubmitState();
 }
 
 function hideUploadModal() {
-  console.log('Hiding upload modal');
-  const modal = document.getElementById('uploadModal');
-  const form = document.getElementById('uploadForm');
-  const status = document.getElementById('uploadStatus');
-  
-  if (modal) modal.classList.add('hidden');
-  if (form) form.reset();
-  if (status) status.innerHTML = '';
-  
-  console.log('✓ Upload modal hidden and form reset');
+  ui.uploadModal?.classList.add("hidden");
+  document.getElementById("uploadForm")?.reset();
+  if (ui.uploadStatus) ui.uploadStatus.innerHTML = "";
+  updateUploadSubmitState();
 }
 
-function handleFileSelect(e) {
-  const files = e.target.files;
-  if (files.length > 0) {
-    const file = files[0];
-    if (file.type.startsWith('video/')) {
-      const status = document.getElementById('uploadStatus');
-      const submitBtn = document.getElementById('uploadSubmitBtn');
-      
-      if (status) {
-        status.innerHTML = `
-          <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
-            <div class="flex items-center space-x-2">
-              <i class="fas fa-check-circle text-blue-500"></i>
-              <span class="text-sm font-medium text-blue-700 dark:text-blue-300">File Selected</span>
-            </div>
-            <p class="text-sm text-blue-600 dark:text-blue-400 mt-1">
-              ${file.name} (${formatFileSize(file.size)})
-            </p>
-          </div>
-        `;
-      }
-      
-      // Enable submit button
-      if (submitBtn) {
-        submitBtn.disabled = false;
-      }
-    } else {
-      showError('Please select a valid video file.');
-      const submitBtn = document.getElementById('uploadSubmitBtn');
-      if (submitBtn) {
-        submitBtn.disabled = true;
-      }
-    }
+function handleFileSelect(event) {
+  const file = event.target.files?.[0];
+  if (!file) {
+    updateUploadSubmitState();
+    return;
+  }
+  if (!file.type.startsWith("video/")) {
+    showToast("Please select a valid video file.", "error");
+    event.target.value = "";
+    updateUploadSubmitState();
+    return;
+  }
+  renderSelectedFile(file);
+  updateUploadSubmitState();
+}
+
+function updateUploadSubmitState() {
+  const hasTitle = Boolean(ui.videoTitle?.value.trim());
+  const hasFile = Boolean(ui.fileInput?.files?.length);
+  if (ui.uploadSubmitBtn) {
+    ui.uploadSubmitBtn.disabled = !(hasTitle && hasFile);
   }
 }
 
-async function handleUploadSubmit(e) {
-  e.preventDefault();
-  console.log('Upload form submitted');
-  
-  if (!currentUser) {
-    showError('Please login to upload videos');
-    return;
-  }
+function renderSelectedFile(file) {
+  if (!ui.uploadStatus) return;
+  ui.uploadStatus.innerHTML = `
+    <div class="file-chip-row">
+      <span class="file-chip">${escapeHtml(file.name)}</span>
+      <span class="file-chip">${formatFileSize(file.size)}</span>
+      <span class="file-chip">${escapeHtml(file.type || "video")}</span>
+    </div>
+  `;
+}
 
-  const title = document.getElementById('videoTitle').value;
-  const description = document.getElementById('videoDescription').value;
-  const category = document.getElementById('videoCategory').value;
-  const fileInput = document.getElementById('fileInput');
+async function handleUploadSubmit(event) {
+  event.preventDefault();
+  if (!currentUser) return showToast("Please login to upload videos.", "error");
 
-  console.log('Upload form values:', {
-    title: title || 'empty',
-    description: description || 'empty',
-    category: category || 'empty',
-    hasFile: fileInput?.files?.length > 0
-  });
+  const title = document.getElementById("videoTitle").value.trim();
+  const description = document.getElementById("videoDescription").value.trim();
+  const category = document.getElementById("videoCategory").value;
+  const tags = document.getElementById("videoTags").value.trim();
+  const file = ui.fileInput?.files?.[0];
 
-  if (!title || !title.trim()) {
-    showError('Please enter a video title');
-    return;
-  }
+  if (!title) return showToast("Title is required.", "error");
+  if (!file) return showToast("Please choose a video file.", "error");
 
-  if (!fileInput || !fileInput.files.length) {
-    showError('Please select a video file');
-    return;
-  }
-
-  const file = fileInput.files[0];
-  console.log('Selected file:', {
-    name: file.name,
-    size: file.size,
-    type: file.type,
-    lastModified: file.lastModified
-  });
-
-  if (!file.type.startsWith('video/')) {
-    showError('Please select a valid video file');
-    return;
-  }
-
-  // Show loading state
-  const submitButton = document.getElementById('uploadSubmitBtn');
-  const originalText = submitButton?.textContent;
-  if (submitButton) {
-    submitButton.disabled = true;
-    submitButton.textContent = 'Uploading...';
-  }
-
-  const uploadStatus = document.getElementById('uploadStatus');
-  if (uploadStatus) {
-    uploadStatus.innerHTML = `
-      <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
-        <div class="flex items-center justify-between mb-2">
-          <span class="text-sm font-medium text-blue-700 dark:text-blue-300">Uploading...</span>
-          <span class="text-sm text-blue-600 dark:text-blue-400" id="uploadPercent">0%</span>
-        </div>
-        <div class="w-full bg-blue-200 dark:bg-blue-800 rounded-full h-2">
-          <div class="bg-blue-500 h-2 rounded-full transition-all duration-300" style="width: 0%" id="uploadProgress"></div>
-        </div>
-        <p class="text-sm text-blue-600 dark:text-blue-400 mt-2" id="uploadProgressText">Preparing upload...</p>
-      </div>
-    `;
-  }
+  ui.uploadSubmitBtn.disabled = true;
+  ui.uploadSubmitBtn.textContent = "Uploading...";
+  renderUploadProgress();
 
   try {
-    console.log('Creating FormData for upload...');
     const formData = new FormData();
-    formData.append('video', file);
-    formData.append('title', title.trim());
-    formData.append('description', (description || 'No description provided').trim());
-    formData.append('category', category || 'other');
+    formData.append("video", file);
+    formData.append("title", title);
+    formData.append("description", description || "No description provided");
+    formData.append("category", category || "other");
+    if (tags) formData.append("tags", tags);
 
-    // Use XMLHttpRequest for progress tracking
-    const result = await uploadWithProgress(formData);
-    console.log('Upload result:', result);
-    
-    if (uploadStatus) {
-      uploadStatus.innerHTML = `
-        <div class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-3">
-          <div class="flex items-center space-x-2">
-            <i class="fas fa-check-circle text-green-500"></i>
-            <span class="text-sm font-medium text-green-700 dark:text-green-300">Upload Successful!</span>
-          </div>
-          <p class="text-sm text-green-600 dark:text-green-400 mt-1">Your video has been uploaded successfully.</p>
-        </div>
-      `;
-    }
-    
-    // Clear the form
-    const form = document.getElementById('uploadForm');
-    if (form) form.reset();
-    
-    // Hide the modal after a short delay
-    setTimeout(() => {
-      hideUploadModal();
-    }, 2000);
-    
-    // Show success message
-    showSuccess('Video uploaded successfully!');
-    
-    // Refresh all video sections to show the new video
-    console.log('Refreshing video sections after upload...');
-    
-    // Force refresh home videos
+    await uploadWithProgress(formData);
+    showToast("Video uploaded successfully.", "success");
+    hideUploadModal();
     await loadHomeVideos();
-    
-    // If user is logged in, also refresh their videos
-    if (currentUser) {
-      console.log('User is logged in, refreshing my videos...');
-      await loadMyVideos();
-    }
-    
-    console.log('✓ Video sections refreshed after upload');
+    if (currentUser) await loadMyVideos();
   } catch (error) {
-    console.error('Upload error:', error);
-    if (uploadStatus) {
-      uploadStatus.innerHTML = `
-        <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
-          <div class="flex items-center space-x-2">
-            <i class="fas fa-exclamation-circle text-red-500"></i>
-            <span class="text-sm font-medium text-red-700 dark:text-red-300">Upload Failed</span>
-          </div>
-          <p class="text-sm text-red-600 dark:text-red-400 mt-1">${error.message}</p>
-        </div>
-      `;
-    }
-    showError(error.message || 'Upload failed. Please try again.');
+    showToast(error.message || "Upload failed.", "error");
   } finally {
-    // Restore button state
-    if (submitButton) {
-      submitButton.disabled = false;
-      submitButton.textContent = originalText || 'Upload Video';
-    }
+    ui.uploadSubmitBtn.disabled = false;
+    ui.uploadSubmitBtn.textContent = "Upload Video";
+    updateUploadSubmitState();
   }
 }
 
-// Function to upload with progress tracking
+function renderUploadProgress() {
+  if (!ui.uploadStatus) return;
+  ui.uploadStatus.innerHTML = `
+    <div class="upload-progress">
+      <div class="file-chip-row">
+        <span class="file-chip">Uploading</span>
+        <span class="file-chip" id="uploadPercent">0%</span>
+      </div>
+      <div class="upload-progress__bar">
+        <div class="upload-progress__fill" id="uploadProgress"></div>
+      </div>
+      <p id="uploadProgressText" class="video-card__stats">Preparing upload...</p>
+    </div>
+  `;
+}
+
 function uploadWithProgress(formData) {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
-    
-    // Progress tracking
-    xhr.upload.addEventListener('progress', (e) => {
-      if (e.lengthComputable) {
-        const percentComplete = Math.round((e.loaded / e.total) * 100);
-        const progressBar = document.getElementById('uploadProgress');
-        const progressText = document.getElementById('uploadProgressText');
-        const progressPercent = document.getElementById('uploadPercent');
-        
-        if (progressBar) {
-          progressBar.style.width = percentComplete + '%';
-        }
-        if (progressPercent) {
-          progressPercent.textContent = percentComplete + '%';
-        }
-        if (progressText) {
-          progressText.textContent = `Uploaded ${formatFileSize(e.loaded)} of ${formatFileSize(e.total)}`;
-        }
+    xhr.upload.addEventListener("progress", (event) => {
+      if (!event.lengthComputable) return;
+      const percent = Math.round((event.loaded / event.total) * 100);
+      const progressBar = document.getElementById("uploadProgress");
+      const progressText = document.getElementById("uploadProgressText");
+      const progressPercent = document.getElementById("uploadPercent");
+      if (progressBar) progressBar.style.width = `${percent}%`;
+      if (progressPercent) progressPercent.textContent = `${percent}%`;
+      if (progressText) {
+        progressText.textContent = `Uploaded ${formatFileSize(event.loaded)} of ${formatFileSize(event.total)}`;
       }
     });
-    
-    // Upload complete
-    xhr.addEventListener('load', () => {
-      if (xhr.status >= 200 && xhr.status < 300) {
-        try {
-          const response = JSON.parse(xhr.responseText);
-          resolve(response);
-        } catch (error) {
-          reject(new Error('Invalid response from server'));
-        }
-      } else {
-        try {
-          const error = JSON.parse(xhr.responseText);
-          reject(new Error(error.error || error.details || 'Upload failed'));
-        } catch (error) {
-          reject(new Error(`Upload failed with status ${xhr.status}`));
-        }
+
+    xhr.addEventListener("load", () => {
+      try {
+        const payload = JSON.parse(xhr.responseText);
+        if (xhr.status >= 200 && xhr.status < 300) resolve(payload);
+        else reject(new Error(payload.error || payload.details || "Upload failed"));
+      } catch (error) {
+        reject(new Error("Invalid response from server"));
       }
     });
-    
-    // Upload error
-    xhr.addEventListener('error', () => {
-      reject(new Error('Network error during upload'));
-    });
-    
-    // Upload timeout
-    xhr.addEventListener('timeout', () => {
-      reject(new Error('Upload timed out'));
-    });
-    
-    // Set timeout and open request
-    xhr.timeout = 300000; // 5 minutes
-    xhr.open('POST', `${API_URL}/videos/upload`);
-    
-    // Add auth header
-    const token = localStorage.getItem('token');
-    if (token) {
-      xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+    xhr.addEventListener("error", () => reject(new Error("Network error during upload")));
+    xhr.addEventListener("timeout", () => reject(new Error("Upload timed out")));
+    xhr.timeout = 300000;
+    xhr.open("POST", `${API_URL}/videos/upload`);
+    if (localStorage.getItem("token")) {
+      xhr.setRequestHeader("Authorization", `Bearer ${localStorage.getItem("token")}`);
     }
-    
-    // Send the request
     xhr.send(formData);
   });
 }
 
-// Video loading functions
 async function loadHomeVideos() {
+  renderGridState("homeSection", renderSkeleton(8));
   try {
-    console.log('Loading home videos');
-    const sortBy = sortSelect?.value;
-    const category = categoryFilter?.value;
-    
     const url = new URL(`${API_URL}/videos`);
-    if (sortBy) url.searchParams.append('sort', sortBy);
-    if (category) url.searchParams.append('category', category);
-
-    console.log('Fetching videos from:', url.toString());
-    
+    if (ui.sortSelect?.value) url.searchParams.append("sort", ui.sortSelect.value);
+    if (ui.categoryFilter?.value) url.searchParams.append("category", ui.categoryFilter.value);
     const videos = await apiCall(url.toString());
-    console.log(`Loaded ${videos.length} home videos`);
-    displayVideos(videos, 'homeSection');
+    lastHomeVideos = videos;
+    displayVideos(videos, "homeSection");
   } catch (error) {
-    console.error('Error loading home videos:', error);
-    showError(error.message);
+    showToast(error.message, "error");
+    renderEmptyState("homeSection", "Unable to load videos right now.");
   }
 }
 
 async function loadMyVideos() {
+  if (!currentUser) return showToast("Please login to view your videos.", "error");
+  renderGridState("myVideosSection", renderSkeleton(6));
   try {
-    console.log('Loading my videos');
-    if (!currentUser) {
-      showError('Please login to view your videos');
-      return;
-    }
-
     const response = await fetch(`${API_URL}/videos/my-videos`, {
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-      }
+      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
     });
-
-    console.log('My videos response status:', response.status);
-    
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Failed to load videos');
-    }
-    
     const videos = await response.json();
-    console.log(`Loaded ${videos.length} my videos`);
-    displayVideos(videos, 'myVideosSection');
+    if (!response.ok) throw new Error(videos.error || "Failed to load videos");
+    displayVideos(videos, "myVideosSection");
   } catch (error) {
-    console.error('Error loading my videos:', error);
-    showError(error.message);
+    showToast(error.message, "error");
+    renderEmptyState("myVideosSection", "Your uploads will appear here.");
   }
 }
 
 async function loadTrendingVideos() {
+  renderGridState("trendingSection", renderSkeleton(6));
   try {
-    console.log('Loading trending videos');
     const response = await fetch(`${API_URL}/videos/trending`);
-    console.log('Trending videos response status:', response.status);
-    
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Failed to load trending videos');
-    }
-    
     const videos = await response.json();
-    console.log(`Loaded ${videos.length} trending videos`);
-    displayVideos(videos, 'trendingSection');
+    if (!response.ok) throw new Error(videos.error || "Failed to load trending videos");
+    displayVideos(videos, "trendingSection");
   } catch (error) {
-    console.error('Error loading trending videos:', error);
-    showError(error.message);
+    showToast(error.message, "error");
+    renderEmptyState("trendingSection", "Trending videos are unavailable.");
   }
 }
 
 async function loadLikedVideos() {
+  if (!currentUser) return showToast("Please login to view liked videos.", "error");
+  renderGridState("likedSection", renderSkeleton(6));
   try {
-    console.log('Loading liked videos');
-    if (!currentUser) {
-      showError('Please login to view liked videos');
-      return;
-    }
-
     const response = await fetch(`${API_URL}/videos/liked`, {
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-      }
+      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
     });
-
-    console.log('Liked videos response status:', response.status);
-    
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Failed to load liked videos');
-    }
-    
     const videos = await response.json();
-    console.log(`Loaded ${videos.length} liked videos`);
-    displayVideos(videos, 'likedSection');
+    if (!response.ok) throw new Error(videos.error || "Failed to load liked videos");
+    displayVideos(videos, "likedSection");
   } catch (error) {
-    console.error('Error loading liked videos:', error);
-    showError(error.message);
+    showToast(error.message, "error");
+    renderEmptyState("likedSection", "Videos you like will appear here.");
   }
 }
 
 async function searchVideos(query) {
+  lastSearchTerm = query;
+  if (!query) return loadHomeVideos();
+  showSection("homeSection");
+  renderGridState("homeSection", renderSkeleton(8));
   try {
-    console.log('Searching videos:', query);
     const url = new URL(`${API_URL}/videos/search`);
-    if (query) url.searchParams.append('q', query);
-
-    console.log('Fetching search results from:', url.toString());
+    url.searchParams.append("q", query);
     const response = await fetch(url);
-    console.log('Search response status:', response.status);
-    
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Search failed');
-    }
-    
     const videos = await response.json();
-    console.log(`Found ${videos.length} videos`);
-    displayVideos(videos, 'homeSection');
+    if (!response.ok) throw new Error(videos.error || "Search failed");
+    displayVideos(videos, "homeSection");
   } catch (error) {
-    console.error('Search error:', error);
-    showError(error.message);
+    showToast(error.message, "error");
+    renderEmptyState("homeSection", `No results for "${escapeHtml(query)}".`);
   }
 }
 
-// Display videos
 function displayVideos(videos, sectionId) {
-  console.log(`Displaying ${videos.length} videos in ${sectionId}`);
   const section = document.getElementById(sectionId);
-  if (!section) {
-    console.error(`Section ${sectionId} not found`);
+  const grid = section?.querySelector(".video-grid");
+  if (!grid) return;
+  if (!Array.isArray(videos) || videos.length === 0) {
+    grid.innerHTML = `<div class="empty-state">No videos found.</div>`;
     return;
   }
-
-  const videoGrid = section.querySelector('.video-grid');
-  if (!videoGrid) {
-    console.error(`Video grid not found in ${sectionId}`);
-    return;
-  }
-
-  // Clear existing content
-  videoGrid.innerHTML = '';
-  console.log(`✓ Cleared video grid in ${sectionId}`);
-
-  if (videos.length === 0) {
-    videoGrid.innerHTML = '<p class="text-center text-gray-500 py-8">No videos found</p>';
-    console.log(`✓ Displayed "No videos found" message in ${sectionId}`);
-    return;
-  }
-
-  // Create and append video cards
-  videos.forEach((video, index) => {
-    console.log(`Creating video card ${index + 1}/${videos.length}:`, video.title);
-    const videoCard = createVideoCard(video);
-    videoGrid.appendChild(videoCard);
-  });
-
-  console.log(`✓ Successfully displayed ${videos.length} videos in ${sectionId}`);
+  grid.innerHTML = "";
+  videos.forEach((video) => grid.appendChild(createVideoCard(video)));
+  hydrateIcons(grid);
 }
 
-// Create video card
 function createVideoCard(video) {
-  console.log('Creating video card:', video);
-  
-  if (!video || !video._id) {
-    console.error('Invalid video data:', video);
-    return document.createElement('div'); // Return empty div for invalid data
-  }
-  
-  const card = document.createElement('div');
-  card.className = 'video-card bg-white dark:bg-dark-card rounded-xl shadow-lg overflow-hidden animate-fadeIn hover:shadow-xl transition-all duration-300';
+  const card = document.createElement("article");
+  card.className = "video-card";
   card.dataset.videoId = video._id;
-  
-  const username = video.userId?.username || 'Unknown User';
-  const thumbnail = video.thumbnail || 'https://via.placeholder.com/400x225?text=No+Thumbnail';
-  const title = video.title || 'Untitled Video';
-  const views = video.views || 0;
-  const likes = video.likes ? video.likes.length : 0;
-  const createdAt = video.createdAt || new Date();
-  
-  // Check if current user liked this video
-  const isLiked = currentUser && video.likes && video.likes.some(likeId => 
-    likeId.toString() === currentUser._id || likeId === currentUser._id
-  );
-  
-  // Check if current user owns this video
+
+  const username = video.userId?.username || "Unknown User";
+  const thumbnail = video.thumbnail || "https://via.placeholder.com/640x360?text=No+Thumbnail";
+  const likes = Array.isArray(video.likes) ? video.likes.length : 0;
+  const isLiked = currentUser && Array.isArray(video.likes)
+    ? video.likes.some((id) => id.toString() === currentUser._id || id === currentUser._id)
+    : false;
   const isOwner = currentUser && (video.userId?._id === currentUser._id || video.userId === currentUser._id);
-  
+
   card.innerHTML = `
-    <div class="video-thumbnail relative group cursor-pointer">
-      <img src="${thumbnail}" alt="${title}" class="w-full h-48 object-cover transition-transform duration-300 group-hover:scale-105">
-      <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-300 flex items-center justify-center">
-        <div class="play-button opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-          <i class="fas fa-play text-white text-4xl"></i>
-        </div>
+    <div class="video-card__thumb">
+      <img src="${escapeHtml(thumbnail)}" alt="${escapeHtml(video.title || "Untitled Video")}" />
+      <div class="video-card__overlay">
+        <span class="video-card__play">${iconMarkup("play-solid")}</span>
       </div>
-      <span class="video-duration absolute bottom-2 right-2 bg-black bg-opacity-75 text-white text-xs px-2 py-1 rounded">
-        ${formatDuration(video.duration)}
-      </span>
+      <span class="video-duration">${formatDuration(video.duration)}</span>
     </div>
-    <div class="p-4">
-      <div class="flex space-x-3">
-        <img src="https://ui-avatars.com/api/?name=${encodeURIComponent(username)}&background=6B4EFF&color=fff" 
-             alt="${username}" 
-             class="channel-avatar w-10 h-10 rounded-full flex-shrink-0">
-        <div class="flex-1 min-w-0">
-          <h3 class="font-medium line-clamp-2 text-gray-900 dark:text-white mb-1">${title}</h3>
-          <p class="text-sm text-gray-500 dark:text-gray-400 mb-1">${username}</p>
-          <p class="text-sm text-gray-500 dark:text-gray-400 mb-3">
-            ${formatViews(views)} views • ${formatDate(createdAt)}
-          </p>
-          
-          <!-- Action buttons -->
-          <div class="flex items-center space-x-4">
-            <button onclick="event.stopPropagation(); likeVideoCard('${video._id}', this)" 
-                    class="like-card-btn flex items-center space-x-1 text-gray-600 dark:text-gray-400 hover:text-red-500 transition-colors ${isLiked ? 'text-red-500' : ''}">
-              <i class="${isLiked ? 'fas' : 'far'} fa-heart"></i>
-              <span class="like-count">${likes}</span>
-            </button>
-            
-            ${isOwner ? `
-              <button onclick="event.stopPropagation(); deleteVideoCard('${video._id}', this)" 
-                      class="delete-card-btn flex items-center space-x-1 text-gray-600 dark:text-gray-400 hover:text-red-500 transition-colors">
-                <i class="fas fa-trash"></i>
-                <span>Delete</span>
-              </button>
-            ` : ''}
-          </div>
+    <div class="video-card__body">
+      <img class="channel-avatar" src="${avatarUrl(username)}" alt="${escapeHtml(username)}" />
+      <div>
+        <h3 class="video-card__title">${escapeHtml(video.title || "Untitled Video")}</h3>
+        <p class="video-card__meta">${escapeHtml(username)}</p>
+        <p class="video-card__stats">${formatViews(video.views || 0)} views · ${formatDate(video.createdAt)}</p>
+        <div class="video-card__actions">
+          <button class="video-card__mini ${isLiked ? "is-liked" : ""}" type="button">
+            ${iconMarkup("heart")}
+            <span class="like-count">${likes}</span>
+          </button>
+          ${isOwner ? `<button class="video-card__mini" type="button" data-delete="true">${iconMarkup("trash")}<span>Delete</span></button>` : ""}
         </div>
       </div>
     </div>
   `;
 
-  // Add click event to play video
-  card.addEventListener('click', () => {
-    console.log('Video card clicked:', video.title);
-    showVideoPlayer(video);
+  card.addEventListener("click", () => showVideoPlayer(video));
+  const likeButton = card.querySelector(".video-card__mini");
+  likeButton?.addEventListener("click", (event) => {
+    event.stopPropagation();
+    likeVideoCard(video._id, likeButton);
   });
-  
-  console.log(`✓ Video card created for: ${title}`);
+
+  const deleteButton = card.querySelector('[data-delete="true"]');
+  deleteButton?.addEventListener("click", (event) => {
+    event.stopPropagation();
+    deleteVideoCard(video._id, deleteButton);
+  });
+
   return card;
 }
 
-// Video player functionality
 function showVideoPlayer(video) {
-  console.log('Showing video player:', video);
-  const modal = document.getElementById('videoPlayerModal');
-  const player = document.getElementById('mainVideoPlayer');
-  const loadingIndicator = document.getElementById('videoLoadingIndicator');
-  const title = modal?.querySelector('.video-title');
-  const description = modal?.querySelector('.video-description');
-  const likeCount = modal?.querySelector('.like-count');
-  const viewCount = modal?.querySelector('.view-count');
-  const uploadDate = modal?.querySelector('.upload-date');
-  const likeButton = modal?.querySelector('.like-button i');
-  const deleteBtn = modal?.querySelector('#deleteVideoBtn');
-  const commentUserAvatar = modal?.querySelector('#commentUserAvatar');
-
-  if (!modal || !player || !title || !description || !likeCount || !viewCount || !uploadDate) {
-    console.error('Missing video player elements');
-    showError('Error loading video player');
-    return;
-  }
-
   currentVideoId = video._id;
-  
-  // Show modal and loading state
-  modal.classList.remove('hidden');
-  if (loadingIndicator) loadingIndicator.classList.remove('hidden');
-  player.classList.add('loading');
-  
-  // Preload video for better performance
-  player.preload = 'metadata';
+  currentVideoData = JSON.parse(JSON.stringify(video));
+  const modal = document.getElementById("videoPlayerModal");
+  const player = document.getElementById("mainVideoPlayer");
+  const loading = document.getElementById("videoLoadingIndicator");
+  const likeButton = modal.querySelector(".like-button");
+  const likeCountNode = likeButton?.querySelector(".like-count");
+  const deleteBtn = document.getElementById("deleteVideoBtn");
+
+  modal.classList.remove("hidden");
+  loading?.classList.remove("hidden");
   player.src = video.url;
-  
-  // Update video info
-  title.textContent = video.title;
-  description.textContent = video.description;
-  likeCount.textContent = video.likes ? video.likes.length : 0;
-  viewCount.textContent = video.views || 0;
-  uploadDate.textContent = formatDate(video.createdAt);
+  modal.querySelector(".video-title").textContent = video.title || "Untitled Video";
+  modal.querySelector(".view-count").textContent = formatViews(video.views || 0);
+  modal.querySelector(".upload-date").textContent = formatDate(video.createdAt);
+  if (likeCountNode) likeCountNode.textContent = Array.isArray(video.likes) ? video.likes.length : 0;
+  ui.videoDescriptionText.textContent = video.description || "No description provided.";
+  ui.videoDescriptionText.classList.add("collapsed");
+  ui.descriptionToggleBtn.textContent = "Show more";
 
-  // Update comment user avatar
-  if (commentUserAvatar && currentUser) {
-    commentUserAvatar.src = currentUser.profilePicture || `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser.username)}&background=6B4EFF&color=fff`;
+  const isLiked = currentUser && Array.isArray(video.likes)
+    ? video.likes.some((id) => id.toString() === currentUser._id || id === currentUser._id)
+    : false;
+  likeButton?.classList.toggle("is-liked", Boolean(isLiked));
+  likeButton?.querySelector(".nav-icon")?.replaceWith(createIconNode("thumbs-up"));
+
+  const isOwner = currentUser && (video.userId?._id === currentUser._id || video.userId === currentUser._id);
+  deleteBtn?.classList.toggle("hidden", !isOwner);
+  if (ui.commentUserAvatar) {
+    ui.commentUserAvatar.src = avatarUrl(currentUser?.username || "User");
   }
 
-  // Set like button state
-  if (likeButton && currentUser) {
-    const isLiked = video.likes && video.likes.some(likeId => likeId.toString() === currentUser._id);
-    if (isLiked) {
-      likeButton.className = 'fas fa-heart text-red-500';
-      likeButton.parentElement.classList.add('text-red-500');
-    } else {
-      likeButton.className = 'far fa-heart';
-      likeButton.parentElement.classList.remove('text-red-500');
-    }
-  }
+  player.onloadeddata = () => loading?.classList.add("hidden");
+  player.onerror = () => {
+    loading?.classList.add("hidden");
+    showToast("Error loading video. Please try again.", "error");
+  };
+  player.oncanplaythrough = () => incrementViewCount(video._id);
+  player.play().catch(() => {});
 
-  // Show delete button if user owns the video
-  if (deleteBtn && currentUser && video.userId) {
-    const isOwner = video.userId._id === currentUser._id || video.userId === currentUser._id;
-    if (isOwner) {
-      deleteBtn.classList.remove('hidden');
-    } else {
-      deleteBtn.classList.add('hidden');
-    }
-  }
-
-  // Setup enhanced video player controls
-  setTimeout(() => {
-    setupVideoPlayer();
-  }, 100);
-  
-  // Load comments
   loadComments(video._id);
-  
-  // Handle video loading events
-  player.addEventListener('loadeddata', () => {
-    console.log('Video data loaded');
-    player.classList.remove('loading');
-    player.classList.add('ready');
-    if (loadingIndicator) loadingIndicator.classList.add('hidden');
-  });
-  
-  player.addEventListener('canplay', () => {
-    console.log('Video can start playing');
-    // Auto-play with user interaction
-    player.play().catch(error => {
-      console.log('Auto-play prevented, user needs to click play');
-    });
-  });
-  
-  player.addEventListener('error', (e) => {
-    console.error('Video error:', e);
-    showError('Error loading video. Please try again.');
-    player.classList.remove('loading');
-    if (loadingIndicator) loadingIndicator.classList.add('hidden');
-  });
-
-  // Increment view count after successful load
-  player.addEventListener('canplaythrough', () => {
-    incrementViewCount(video._id);
-  });
+  renderRelatedVideos(video._id);
 }
 
 function hideVideoPlayer() {
-  console.log('Hiding video player');
-  const modal = document.getElementById('videoPlayerModal');
-  const player = document.getElementById('mainVideoPlayer');
-  const loadingIndicator = document.getElementById('videoLoadingIndicator');
-  
-  if (!modal || !player) {
-    console.error('Missing video player elements');
-    return;
-  }
-
-  // Pause and reset video
+  const modal = document.getElementById("videoPlayerModal");
+  const player = document.getElementById("mainVideoPlayer");
+  const loading = document.getElementById("videoLoadingIndicator");
   player.pause();
-  player.currentTime = 0;
-  player.src = '';
-  
-  // Reset player state
-  player.classList.remove('loading', 'ready');
-  if (loadingIndicator) loadingIndicator.classList.add('hidden');
-  
-  // Hide modal
-  modal.classList.add('hidden');
+  player.src = "";
+  loading?.classList.add("hidden");
+  modal.classList.add("hidden");
   currentVideoId = null;
+  currentVideoData = null;
 }
 
-// Like video from card
+async function renderRelatedVideos(excludeId) {
+  const container = document.getElementById("relatedVideosList");
+  if (!container) return;
+  container.innerHTML = renderCompactSkeleton(5);
+  hydrateIcons(container);
+
+  const source = lastHomeVideos.length ? lastHomeVideos : await apiCall(`${API_URL}/videos`);
+  const related = source.filter((video) => video._id !== excludeId).slice(0, 6);
+  container.innerHTML = related.length
+    ? related.map((video) => `
+        <article class="related-card" data-video-id="${video._id}">
+          <div class="related-card__thumb">
+            <img src="${escapeHtml(video.thumbnail || "https://via.placeholder.com/640x360?text=No+Thumbnail")}" alt="${escapeHtml(video.title || "Untitled Video")}" />
+            <span class="video-duration">${formatDuration(video.duration)}</span>
+          </div>
+          <div>
+            <h4 class="related-card__title">${escapeHtml(video.title || "Untitled Video")}</h4>
+            <p class="video-card__meta">${escapeHtml(video.userId?.username || "Unknown User")}</p>
+            <p class="video-card__stats">${formatViews(video.views || 0)} views</p>
+          </div>
+        </article>
+      `).join("")
+    : `<div class="empty-state">No related videos yet.</div>`;
+
+  container.querySelectorAll(".related-card").forEach((card) => {
+    card.addEventListener("click", () => {
+      const nextVideo = related.find((item) => item._id === card.dataset.videoId);
+      if (nextVideo) showVideoPlayer(nextVideo);
+    });
+  });
+}
+
 async function likeVideoCard(videoId, button) {
-  if (!currentUser) {
-    showError('Please login to like videos');
-    return;
-  }
-  
+  if (!currentUser) return showToast("Please login to like videos.", "error");
+  const countNode = button.querySelector(".like-count");
+  const originalCount = parseInt(countNode.textContent, 10) || 0;
+  const wasLiked = button.classList.contains("is-liked");
+  button.classList.toggle("is-liked", !wasLiked);
+  countNode.textContent = String(wasLiked ? Math.max(0, originalCount - 1) : originalCount + 1);
   try {
-    console.log('Liking video from card:', videoId);
-    
-    const heartIcon = button.querySelector('i');
-    const likeCount = button.querySelector('.like-count');
-    const currentLikes = parseInt(likeCount.textContent) || 0;
-    const isCurrentlyLiked = heartIcon.classList.contains('fas');
-    
-    // Optimistically update UI
-    if (isCurrentlyLiked) {
-      heartIcon.className = 'far fa-heart';
-      button.classList.remove('text-red-500');
-      likeCount.textContent = Math.max(0, currentLikes - 1);
-    } else {
-      heartIcon.className = 'fas fa-heart';
-      button.classList.add('text-red-500');
-      likeCount.textContent = currentLikes + 1;
-    }
-
     const response = await fetch(`${API_URL}/videos/${videoId}/like`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-      }
+      method: "POST",
+      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
     });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Failed to like video');
-    }
-    
     const data = await response.json();
-    console.log('Like response data:', data);
-    
-    // Update with actual server response
-    likeCount.textContent = data.likes;
-    if (data.isLiked) {
-      heartIcon.className = 'fas fa-heart';
-      button.classList.add('text-red-500');
-    } else {
-      heartIcon.className = 'far fa-heart';
-      button.classList.remove('text-red-500');
-    }
-    
+    if (!response.ok) throw new Error(data.error || "Failed to like video");
+    button.classList.toggle("is-liked", Boolean(data.isLiked));
+    countNode.textContent = String(data.likes);
   } catch (error) {
-    console.error('Like error:', error);
-    showError(error.message);
-    
-    // Revert optimistic update
-    const heartIcon = button.querySelector('i');
-    const likeCount = button.querySelector('.like-count');
-    if (heartIcon && likeCount) {
-      heartIcon.className = 'far fa-heart';
-      button.classList.remove('text-red-500');
-    }
+    button.classList.toggle("is-liked", wasLiked);
+    countNode.textContent = String(originalCount);
+    showToast(error.message, "error");
   }
 }
 
-// Delete video from card
-async function deleteVideoCard(videoId, button) {
-  if (!currentUser) {
-    showError('Please login to delete videos');
-    return;
-  }
-  
-  // Confirm deletion
-  if (!confirm('Are you sure you want to delete this video? This action cannot be undone.')) {
-    return;
-  }
-  
-  try {
-    console.log('Deleting video from card:', videoId);
-    
-    // Show loading state
-    const originalText = button.innerHTML;
-    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Deleting...';
-    button.disabled = true;
-    
-    const response = await fetch(`${API_URL}/videos/${videoId}`, {
-      method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-      }
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Failed to delete video');
-    }
-    
-    const data = await response.json();
-    console.log('Delete response data:', data);
-    
-    showSuccess('Video deleted successfully!');
-    
-    // Remove the video card from the DOM
-    const videoCard = button.closest('.video-card');
-    if (videoCard) {
-      videoCard.style.opacity = '0';
-      videoCard.style.transform = 'scale(0.8)';
-      setTimeout(() => {
-        videoCard.remove();
-      }, 300);
-    }
-    
-    // Refresh video sections
-    await loadHomeVideos();
-    if (currentUser) {
-      await loadMyVideos();
-    }
-    
-  } catch (error) {
-    console.error('Delete error:', error);
-    showError(error.message);
-    
-    // Restore button state
-    button.innerHTML = originalText;
-    button.disabled = false;
-  }
-}
-
-// Like video
 async function likeVideo() {
-  if (!currentVideoId) {
-    console.error('No current video ID for like operation');
-    return;
-  }
-  
+  if (!currentUser) return showToast("Please login to like videos.", "error");
+  if (!currentVideoId) return;
+  const button = document.querySelector(".like-button");
+  const countNode = button?.querySelector(".like-count");
+  const originalCount = parseInt(countNode?.textContent || "0", 10);
+  const wasLiked = button.classList.contains("is-liked");
+  button.classList.toggle("is-liked", !wasLiked);
+  countNode.textContent = String(wasLiked ? Math.max(0, originalCount - 1) : originalCount + 1);
   try {
-    console.log('Liking video:', currentVideoId);
-    if (!currentUser) {
-      showError('Please login to like videos');
-      return;
-    }
-
-    // Get current like button state
-    const likeButton = document.querySelector('.like-button i');
-    const likeCount = document.querySelector('.like-count');
-    
-    // Optimistically update UI
-    if (likeButton && likeCount) {
-      const currentLikes = parseInt(likeCount.textContent) || 0;
-      const isCurrentlyLiked = likeButton.classList.contains('fas');
-      
-      if (isCurrentlyLiked) {
-        // Unlike
-        likeButton.className = 'far fa-heart';
-        likeButton.parentElement.classList.remove('text-red-500');
-        likeCount.textContent = Math.max(0, currentLikes - 1);
-      } else {
-        // Like
-        likeButton.className = 'fas fa-heart text-red-500';
-        likeButton.parentElement.classList.add('text-red-500');
-        likeCount.textContent = currentLikes + 1;
-      }
-    }
-
     const response = await fetch(`${API_URL}/videos/${currentVideoId}/like`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-      }
+      method: "POST",
+      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
     });
-
-    console.log('Like response status:', response.status);
-    
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Failed to like video');
-    }
-    
     const data = await response.json();
-    console.log('Like response data:', data);
-    
-    // Update with actual server response
-    if (likeCount) {
-      likeCount.textContent = data.likes;
-      console.log('✓ Like count updated to:', data.likes);
-    }
-    
-    if (likeButton) {
-      if (data.isLiked) {
-        likeButton.className = 'fas fa-heart text-red-500';
-        likeButton.parentElement.classList.add('text-red-500');
-      } else {
-        likeButton.className = 'far fa-heart';
-        likeButton.parentElement.classList.remove('text-red-500');
-      }
-    }
-    
-    // Refresh video sections to update like states
-    await loadHomeVideos();
-    if (currentUser) {
-      await loadMyVideos();
-    }
-    
+    if (!response.ok) throw new Error(data.error || "Failed to like video");
+    button.classList.toggle("is-liked", Boolean(data.isLiked));
+    countNode.textContent = String(data.likes);
   } catch (error) {
-    console.error('Like error:', error);
-    showError(error.message);
-    
-    // Revert optimistic update on error
-    const likeButton = document.querySelector('.like-button i');
-    const likeCount = document.querySelector('.like-count');
-    if (likeButton && likeCount) {
-      // This is a simplified revert - in a real app you'd store the original state
-      likeButton.className = 'far fa-heart';
-      likeButton.parentElement.classList.remove('text-red-500');
-    }
+    button.classList.toggle("is-liked", wasLiked);
+    countNode.textContent = String(originalCount);
+    showToast(error.message, "error");
   }
 }
 
-// Delete video
-async function deleteVideo(videoId) {
-  if (!videoId) {
-    console.error('No video ID for delete operation');
-    return;
-  }
-  
-  if (!currentUser) {
-    showError('Please login to delete videos');
-    return;
-  }
-  
-  // Confirm deletion
-  if (!confirm('Are you sure you want to delete this video? This action cannot be undone.')) {
-    return;
-  }
-  
+async function deleteVideoCard(videoId) {
+  if (!currentUser) return showToast("Please login to delete videos.", "error");
+  if (!confirm("Are you sure you want to delete this video? This action cannot be undone.")) return;
   try {
-    console.log('Deleting video:', videoId);
-    
     const response = await fetch(`${API_URL}/videos/${videoId}`, {
-      method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-      }
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
     });
-
-    console.log('Delete response status:', response.status);
-    
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Failed to delete video');
-    }
-    
     const data = await response.json();
-    console.log('Delete response data:', data);
-    
-    showSuccess('Video deleted successfully!');
-    
-    // Close video player if it's the deleted video
-    if (currentVideoId === videoId) {
-      hideVideoPlayer();
-    }
-    
-    // Refresh video sections
+    if (!response.ok) throw new Error(data.error || "Failed to delete video");
+    showToast("Video deleted successfully.", "success");
+    if (currentVideoId === videoId) hideVideoPlayer();
     await loadHomeVideos();
-    if (currentUser) {
-      await loadMyVideos();
-    }
-    
+    if (currentUser) await loadMyVideos();
   } catch (error) {
-    console.error('Delete error:', error);
-    showError(error.message);
+    showToast(error.message, "error");
   }
 }
 
-// Increment view count
-async function incrementViewCount(videoId) {
-  if (!videoId) {
-    console.error('No video ID for view count increment');
-    return;
-  }
-  
+async function deleteVideo(videoId) {
+  if (!currentUser) return showToast("Please login to delete videos.", "error");
+  if (!confirm("Are you sure you want to delete this video? This action cannot be undone.")) return;
   try {
-    console.log('Incrementing view count for video:', videoId);
-    const response = await fetch(`${API_URL}/videos/${videoId}/view`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-      }
+    const response = await fetch(`${API_URL}/videos/${videoId}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
     });
-
-    console.log('View count response status:', response.status);
-    
-    if (!response.ok) {
-      const error = await response.json();
-      console.warn('View count increment failed:', error.error);
-      return; // Don't throw error for view count, just log it
-    }
-
     const data = await response.json();
-    console.log('View count updated:', data);
-    
-    const viewCount = document.querySelector('.view-count');
-    if (viewCount) {
-      viewCount.textContent = data.views;
-      console.log('✓ View count updated to:', data.views);
-    }
+    if (!response.ok) throw new Error(data.error || "Failed to delete video");
+    showToast("Video deleted successfully.", "success");
+    if (currentVideoId === videoId) hideVideoPlayer();
+    await loadHomeVideos();
+    if (currentUser) await loadMyVideos();
   } catch (error) {
-    console.error('View count error:', error);
-    // Don't show error to user for view count issues
+    showToast(error.message, "error");
   }
 }
 
-// Auth modal functions
-function showAuthModal() {
-  console.log('🔐 Showing auth modal...');
+async function incrementViewCount(videoId) {
   try {
-    const modal = document.getElementById('authModal');
-    if (modal) {
-      modal.classList.remove('hidden');
-      console.log('✅ Auth modal shown successfully');
-      
-      // Focus on the first input field
-      const firstInput = modal.querySelector('input');
-      if (firstInput) {
-        firstInput.focus();
-        console.log('✅ Focused on first input field');
-      }
-    } else {
-      console.error('❌ Auth modal element not found!');
-    }
+    const response = await fetch(`${API_URL}/videos/${videoId}/view`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+    });
+    const data = await response.json();
+    if (!response.ok) return;
+    document.querySelector(".view-count").textContent = formatViews(data.views);
   } catch (error) {
-    console.error('❌ Error showing auth modal:', error);
+    console.warn("View count update failed:", error);
   }
+}
+
+function showAuthModal() {
+  document.getElementById("authModal")?.classList.remove("hidden");
 }
 
 function hideAuthModal() {
-  console.log('🔐 Hiding auth modal...');
-  try {
-    const modal = document.getElementById('authModal');
-    if (modal) {
-      modal.classList.add('hidden');
-      console.log('✅ Auth modal hidden successfully');
-      
-      // Clear form fields
-      const forms = modal.querySelectorAll('form');
-      forms.forEach(form => {
-        const inputs = form.querySelectorAll('input');
-        inputs.forEach(input => input.value = '');
-        
-        // Clear error messages
-        const errorMessages = form.querySelectorAll('.error-message');
-        errorMessages.forEach(el => el.remove());
-      });
-      console.log('✅ Form fields cleared');
-    } else {
-      console.error('❌ Auth modal element not found!');
-    }
-  } catch (error) {
-    console.error('❌ Error hiding auth modal:', error);
-  }
+  document.getElementById("authModal")?.classList.add("hidden");
+  document.querySelectorAll("#authModal .error-message").forEach((node) => node.remove());
 }
 
 function handleLogout() {
-  console.log('Handling logout');
   auth.logout();
   currentUser = null;
   updateUIForLoggedOutUser();
-  showSuccess('Logged out successfully');
+  showToast("Logged out successfully.", "success");
   loadHomeVideos();
 }
 
 function toggleUserMenu() {
-  console.log('Toggling user menu');
-  if (userMenu) userMenu.classList.toggle('hidden');
+  ui.userMenu?.classList.toggle("hidden");
 }
 
 function toggleTheme() {
-  console.log('Toggling theme');
-  document.documentElement.classList.toggle('dark');
+  applyTheme(document.body.dataset.theme === "dark" ? "light" : "dark");
+}
+
+function applyTheme(theme) {
+  currentTheme = theme;
+  document.body.dataset.theme = theme;
+  localStorage.setItem("navistream-theme", theme);
+  const themeNode = document.querySelector('[data-icon="theme"]');
+  if (themeNode) themeNode.outerHTML = iconMarkup(theme === "dark" ? "moon" : "sun", "theme");
+  hydrateIcons();
 }
 
 function toggleSidebar() {
-  console.log('Toggling sidebar');
-  const sidebar = document.querySelector('.sidebar');
-  const mainContent = document.querySelector('.main-content');
-  
-  if (sidebar) sidebar.classList.toggle('collapsed');
-  if (mainContent) mainContent.classList.toggle('expanded');
-}
-
-// Utility functions
-function formatDuration(seconds) {
-  if (!seconds) return '0:00';
-  const minutes = Math.floor(seconds / 60);
-  const remainingSeconds = Math.floor(seconds % 60);
-  return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
-}
-
-function formatViews(views) {
-  if (!views) return '0';
-  if (views >= 1000000) {
-    return `${(views / 1000000).toFixed(1)}M`;
-  } else if (views >= 1000) {
-    return `${(views / 1000).toFixed(1)}K`;
+  if (window.innerWidth <= 768) {
+    ui.sidebar?.classList.toggle("mobile-open");
+    return;
   }
-  return views.toString();
+  ui.sidebar?.classList.toggle("collapsed");
+  ui.appMain?.classList.toggle("sidebar-collapsed");
 }
 
-function formatDate(date) {
-  if (!date) return 'Just now';
-  const now = new Date();
-  const videoDate = new Date(date);
-  const diff = now - videoDate;
-  
-  const seconds = Math.floor(diff / 1000);
-  const minutes = Math.floor(seconds / 60);
-  const hours = Math.floor(minutes / 60);
-  const days = Math.floor(hours / 24);
-  
-  if (days > 0) return `${days} day${days > 1 ? 's' : ''} ago`;
-  if (hours > 0) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
-  if (minutes > 0) return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
-  return 'Just now';
+function toggleDescription() {
+  if (!ui.videoDescriptionText) return;
+  const collapsed = ui.videoDescriptionText.classList.toggle("collapsed");
+  ui.descriptionToggleBtn.textContent = collapsed ? "Show more" : "Show less";
 }
 
-function formatFileSize(bytes) {
-  if (bytes === 0) return '0 Bytes';
-  const k = 1024;
-  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+function toggleFullscreen() {
+  const modal = document.getElementById("videoPlayerModal");
+  if (!document.fullscreenElement) modal.requestFullscreen?.();
+  else document.exitFullscreen?.();
+}
+
+async function shareVideo() {
+  const url = document.getElementById("mainVideoPlayer")?.src || window.location.href;
+  const title = document.querySelector(".video-title")?.textContent || "Check out this video";
+  if (navigator.share) {
+    try {
+      await navigator.share({ title, url });
+    } catch (error) {
+      console.warn(error);
+    }
+    return;
+  }
+  try {
+    await navigator.clipboard.writeText(url);
+    showToast("Link copied to clipboard.", "success");
+  } catch (error) {
+    showToast("Unable to copy video link.", "error");
+  }
+}
+
+async function loadPlaylists() {
+  const container = document.getElementById("playlistsGrid");
+  if (!currentUser) return showToast("Please login to view playlists.", "error");
+  container.innerHTML = renderSkeleton(3, true);
+  try {
+    const response = await fetch(`${API_URL}/playlists`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+    });
+    const playlists = await response.json();
+    if (!response.ok) throw new Error(playlists.error || "Failed to load playlists");
+    displayPlaylists(playlists);
+  } catch (error) {
+    showToast(error.message, "error");
+    container.innerHTML = `<div class="playlist-empty">No playlists available right now.</div>`;
+  }
+}
+
+function displayPlaylists(playlists) {
+  const container = document.getElementById("playlistsGrid");
+  if (!container) return;
+  if (!playlists.length) {
+    container.innerHTML = `<div class="playlist-empty">No playlists yet. Create your first playlist.</div>`;
+    return;
+  }
+  container.innerHTML = playlists.map((playlist) => `
+    <article class="playlist-card">
+      <p class="eyebrow">Playlist</p>
+      <h3>${escapeHtml(playlist.name)}</h3>
+      <p class="video-card__meta">${escapeHtml(playlist.description || "No description")}</p>
+      <p class="video-card__stats">${playlist.videos.length} videos · ${formatDate(playlist.createdAt)}</p>
+    </article>
+  `).join("");
+}
+
+async function loadWatchLater() {
+  if (!currentUser) return showToast("Please login to view watch later.", "error");
+  renderGridState("watchLaterSection", renderSkeleton(6));
+  try {
+    const response = await fetch(`${API_URL}/watch-later`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+    });
+    const videos = await response.json();
+    if (!response.ok) throw new Error(videos.error || "Failed to load watch later");
+    displayVideos(videos, "watchLaterSection");
+  } catch (error) {
+    showToast(error.message, "error");
+    renderEmptyState("watchLaterSection", "Your saved videos will appear here.");
+  }
+}
+
+async function loadUserProfile() {
+  if (!currentUser) return showToast("Please login to view your channel.", "error");
+  renderGridState("profileSection", renderSkeleton(6));
+  try {
+    const response = await fetch(`${API_URL}/users/${currentUser._id}`);
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "Failed to load profile");
+    displayUserProfile(data.user, data.videos);
+  } catch (error) {
+    showToast(error.message, "error");
+  }
+}
+
+function displayUserProfile(user, videos) {
+  document.getElementById("profilePicture").src = user.profilePicture || avatarUrl(user.username);
+  document.getElementById("profileUsername").textContent = user.username;
+  document.getElementById("profileBio").textContent = user.bio || "Creator channel";
+  document.getElementById("videoCount").textContent = videos.length;
+  document.getElementById("subscriberCount").textContent = user.subscribers || 0;
+  displayVideos(videos, "profileSection");
+}
+
+async function addToWatchLater(videoId) {
+  if (!currentUser) return showToast("Please login to save videos.", "error");
+  try {
+    const response = await fetch(`${API_URL}/videos/${videoId}/watch-later`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "Failed to save video");
+    showToast("Saved to Watch Later.", "success");
+  } catch (error) {
+    showToast(error.message, "error");
+  }
+}
+
+function showCreatePlaylistModal() {
+  const name = prompt("Enter playlist name:");
+  if (name?.trim()) createPlaylist(name.trim());
+}
+
+async function createPlaylist(name, description = "") {
+  try {
+    const response = await fetch(`${API_URL}/playlists`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${localStorage.getItem("token")}`,
+      },
+      body: JSON.stringify({ name, description, isPublic: true }),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "Failed to create playlist");
+    showToast("Playlist created successfully.", "success");
+    loadPlaylists();
+  } catch (error) {
+    showToast(error.message, "error");
+  }
+}
+
+function showAddToPlaylistModal(videoId) {
+  const playlistName = prompt("Enter playlist name to add this video to:");
+  if (playlistName?.trim()) addVideoToPlaylist(videoId, playlistName.trim());
+}
+
+async function addVideoToPlaylist(videoId, playlistName) {
+  try {
+    const response = await fetch(`${API_URL}/playlists`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+    });
+    const playlists = await response.json();
+    if (!response.ok) throw new Error(playlists.error || "Failed to get playlists");
+    const playlist = playlists.find((item) => item.name.toLowerCase() === playlistName.toLowerCase());
+    if (!playlist) throw new Error("Playlist not found");
+
+    const addResponse = await fetch(`${API_URL}/playlists/${playlist._id}/videos`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${localStorage.getItem("token")}`,
+      },
+      body: JSON.stringify({ videoId }),
+    });
+    const data = await addResponse.json();
+    if (!addResponse.ok) throw new Error(data.error || "Failed to add video to playlist");
+    showToast("Video added to playlist.", "success");
+  } catch (error) {
+    showToast(error.message, "error");
+  }
+}
+
+async function loadComments(videoId) {
+  try {
+    const response = await fetch(`${API_URL}/videos/${videoId}`);
+    const video = await response.json();
+    if (!response.ok) throw new Error("Failed to load comments");
+    displayComments(video.comments || []);
+  } catch (error) {
+    document.getElementById("commentsList").innerHTML = `<div class="empty-state">Comments are unavailable.</div>`;
+  }
+}
+
+function displayComments(comments) {
+  const container = document.getElementById("commentsList");
+  if (!container) return;
+  if (!comments.length) {
+    container.innerHTML = `<div class="empty-state">No comments yet. Be the first to comment.</div>`;
+    return;
+  }
+  container.innerHTML = comments.map((comment) => `
+    <article class="comment-card">
+      <img src="${comment.userId.profilePicture || avatarUrl(comment.userId.username)}" alt="${escapeHtml(comment.userId.username)}" />
+      <div>
+        <p><strong>${escapeHtml(comment.userId.username)}</strong> <span class="video-card__stats">${formatDate(comment.createdAt)}</span></p>
+        <p>${escapeHtml(comment.text)}</p>
+        ${currentUser && (comment.userId._id === currentUser._id || comment.userId === currentUser._id)
+          ? `<button type="button" class="text-button" onclick="deleteComment('${comment._id}')">Delete</button>`
+          : ""}
+      </div>
+    </article>
+  `).join("");
+}
+
+async function addComment(videoId, text) {
+  try {
+    const response = await fetch(`${API_URL}/videos/${videoId}/comments`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${localStorage.getItem("token")}`,
+      },
+      body: JSON.stringify({ text }),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "Failed to add comment");
+    ui.commentInput.value = "";
+    await loadComments(videoId);
+    showToast("Comment added.", "success");
+  } catch (error) {
+    showToast(error.message, "error");
+  }
+}
+
+async function deleteComment(commentId) {
+  if (!confirm("Are you sure you want to delete this comment?")) return;
+  try {
+    const response = await fetch(`${API_URL}/videos/${currentVideoId}/comments/${commentId}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "Failed to delete comment");
+    await loadComments(currentVideoId);
+    showToast("Comment deleted.", "success");
+  } catch (error) {
+    showToast(error.message, "error");
+  }
+}
+
+async function apiCall(url, options = {}) {
+  const response = await fetch(url, options);
+  const contentType = response.headers.get("content-type");
+  if (!contentType || !contentType.includes("application/json")) {
+    throw new Error(`Server returned non-JSON response: ${response.status} ${response.statusText}`);
+  }
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+  return data;
+}
+
+async function testAPIConnectivity() {
+  try {
+    const response = await fetch(`${API_URL}/videos`);
+    return (response.headers.get("content-type") || "").includes("application/json");
+  } catch (error) {
+    return false;
+  }
+}
+
+function renderGridState(sectionId, markup) {
+  const section = document.getElementById(sectionId);
+  const grid = section?.querySelector(".video-grid");
+  if (grid) grid.innerHTML = markup;
+}
+
+function renderEmptyState(sectionId, message) {
+  renderGridState(sectionId, `<div class="empty-state">${message}</div>`);
+}
+
+function renderSkeleton(count = 6, cardsOnly = false) {
+  return Array.from({ length: count }).map(() => `
+    <div class="skeleton-card">
+      <div class="skeleton-block skeleton-thumb"></div>
+      <div class="skeleton-row">
+        <div class="skeleton-block skeleton-avatar"></div>
+        <div class="skeleton-lines">
+          <div class="skeleton-block skeleton-line"></div>
+          <div class="skeleton-block skeleton-line short"></div>
+          ${cardsOnly ? "" : `<div class="skeleton-block skeleton-line short"></div>`}
+        </div>
+      </div>
+    </div>
+  `).join("");
+}
+
+function renderCompactSkeleton(count = 4) {
+  return Array.from({ length: count }).map(() => `
+    <div class="related-card">
+      <div class="skeleton-block skeleton-thumb"></div>
+      <div class="skeleton-lines">
+        <div class="skeleton-block skeleton-line"></div>
+        <div class="skeleton-block skeleton-line short"></div>
+      </div>
+    </div>
+  `).join("");
+}
+
+function showToast(message, type = "info") {
+  if (!ui.toastStack) return;
+  const toast = document.createElement("div");
+  toast.className = `toast toast--${type}`;
+  toast.textContent = message;
+  ui.toastStack.appendChild(toast);
+  setTimeout(() => {
+    toast.remove();
+  }, 3000);
 }
 
 function showError(message) {
-  console.error('Showing error:', message);
-  const errorDiv = document.getElementById('errorMessage');
-  if (errorDiv) {
-    errorDiv.textContent = message;
-    errorDiv.classList.remove('hidden');
-    setTimeout(() => {
-      errorDiv.classList.add('hidden');
-    }, 5000);
-  }
+  showToast(message, "error");
 }
 
 function showSuccess(message) {
-  console.log('Showing success:', message);
-  const successDiv = document.getElementById('successMessage');
-  if (successDiv) {
-    successDiv.textContent = message;
-    successDiv.classList.remove('hidden');
-    setTimeout(() => {
-      successDiv.classList.add('hidden');
-    }, 5000);
-  }
+  showToast(message, "success");
 }
 
 function showFormError(form, message) {
-  console.log('Showing form error:', message);
-  
-  // Remove existing error messages
-  const existingErrors = form.querySelectorAll('.error-message');
-  existingErrors.forEach(el => el.remove());
-  
-  // Create error element
-  const errorDiv = document.createElement('div');
-  errorDiv.className = 'error-message text-red-500 text-sm mt-2';
-  errorDiv.textContent = message;
-  
-  // Insert after the form
-  form.appendChild(errorDiv);
-  
-  // Auto-remove after 5 seconds
-  setTimeout(() => {
-    if (errorDiv.parentNode) {
-      errorDiv.remove();
-    }
-  }, 5000);
+  form.querySelectorAll(".error-message").forEach((node) => node.remove());
+  const error = document.createElement("div");
+  error.className = "error-message";
+  error.style.color = "#ff7b7b";
+  error.textContent = message;
+  form.appendChild(error);
 }
 
-// Log that the script has loaded successfully
-console.log('App.js loaded and all functions are now globally available!');
+function syncCategoryPills(value) {
+  document.querySelectorAll(".category-pill").forEach((pill) => {
+    pill.classList.toggle("is-active", (pill.dataset.value || "") === value);
+  });
+}
 
-// Expose functions globally for HTML onclick handlers
+function formatDuration(seconds) {
+  if (!seconds && seconds !== 0) return "0:00";
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = Math.floor(seconds % 60);
+  return `${minutes}:${String(remainingSeconds).padStart(2, "0")}`;
+}
+
+function formatViews(views) {
+  if (!views) return "0";
+  if (views >= 1000000) return `${(views / 1000000).toFixed(1)}M`;
+  if (views >= 1000) return `${(views / 1000).toFixed(1)}K`;
+  return String(views);
+}
+
+function formatDate(date) {
+  if (!date) return "Just now";
+  const diff = Date.now() - new Date(date).getTime();
+  const minutes = Math.floor(diff / 60000);
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+  const months = Math.floor(days / 30);
+  if (months > 0) return `${months}mo ago`;
+  if (days > 0) return `${days}d ago`;
+  if (hours > 0) return `${hours}h ago`;
+  if (minutes > 0) return `${minutes}m ago`;
+  return "Just now";
+}
+
+function formatFileSize(bytes) {
+  if (bytes === 0) return "0 Bytes";
+  const units = ["Bytes", "KB", "MB", "GB"];
+  const index = Math.floor(Math.log(bytes) / Math.log(1024));
+  return `${parseFloat((bytes / 1024 ** index).toFixed(2))} ${units[index]}`;
+}
+
+function avatarUrl(name) {
+  return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=ff4444&color=fff`;
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function hydrateIcons(root = document) {
+  root.querySelectorAll("[data-icon]").forEach((node) => {
+    node.innerHTML = rawIconSvg(node.dataset.icon);
+  });
+}
+
+function createIconNode(name) {
+  const wrapper = document.createElement("span");
+  wrapper.className = "nav-icon";
+  wrapper.innerHTML = rawIconSvg(name);
+  return wrapper;
+}
+
+function iconMarkup(name, dataIcon = "") {
+  const attr = dataIcon ? ` data-icon="${dataIcon}"` : "";
+  return `<span class="nav-icon"${attr}>${rawIconSvg(name)}</span>`;
+}
+
+function rawIconSvg(name) {
+  const icons = {
+    menu: `<svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"></path></svg>`,
+    search: `<svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"></circle><path d="m20 20-3.5-3.5"></path></svg>`,
+    bell: `<svg viewBox="0 0 24 24"><path d="M15 17H5l1.4-1.4A2 2 0 0 0 7 14.2V11a5 5 0 1 1 10 0v3.2a2 2 0 0 0 .6 1.4L19 17h-4"></path><path d="M10 20a2 2 0 0 0 4 0"></path></svg>`,
+    theme: document.body?.dataset.theme === "dark"
+      ? `<svg viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"></path></svg>`
+      : `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path></svg>`,
+    upload: `<svg viewBox="0 0 24 24"><path d="M12 16V5"></path><path d="m7 10 5-5 5 5"></path><path d="M20 16.5v1.5A2 2 0 0 1 18 20H6a2 2 0 0 1-2-2v-1.5"></path></svg>`,
+    home: `<svg viewBox="0 0 24 24"><path d="m3 10 9-7 9 7"></path><path d="M9 21V12h6v9"></path></svg>`,
+    trending: `<svg viewBox="0 0 24 24"><path d="m3 17 6-6 4 4 7-8"></path><path d="M14 7h6v6"></path></svg>`,
+    subscriptions: `<svg viewBox="0 0 24 24"><path d="M4 7h16v10H4z"></path><path d="m10 10 5 2-5 2z"></path></svg>`,
+    clock: `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"></circle><path d="M12 8v5l3 2"></path></svg>`,
+    heart: `<svg viewBox="0 0 24 24"><path d="m12 20-1.4-1.3C5.4 14 2 10.9 2 7.1 2 4 4.4 2 7.3 2c1.7 0 3.3.8 4.3 2.1C12.7 2.8 14.3 2 16 2 18.9 2 21.3 4 21.3 7.1c0 3.8-3.4 6.9-8.6 11.6z"></path></svg>`,
+    history: `<svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7"></path><path d="M3 4v5h5"></path><path d="M12 7v5l3 2"></path></svg>`,
+    user: `<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"></circle><path d="M5 20a7 7 0 0 1 14 0"></path></svg>`,
+    gamepad: `<svg viewBox="0 0 24 24"><path d="M6 10h12a4 4 0 0 1 4 4v2a3 3 0 0 1-5.1 2.1L14 15H10l-2.9 3.1A3 3 0 0 1 2 16v-2a4 4 0 0 1 4-4Z"></path><path d="M8 13h2M9 12v2M16.5 12.5h.01M18.5 14.5h.01"></path></svg>`,
+    music: `<svg viewBox="0 0 24 24"><path d="M9 18V6l10-2v12"></path><circle cx="7" cy="18" r="3"></circle><circle cx="17" cy="16" r="3"></circle></svg>`,
+    book: `<svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"></path></svg>`,
+    sparkles: `<svg viewBox="0 0 24 24"><path d="m12 3 1.9 4.1L18 9l-4.1 1.9L12 15l-1.9-4.1L6 9l4.1-1.9L12 3Z"></path><path d="m19 14 .9 2.1L22 17l-2.1.9L19 20l-.9-2.1L16 17l2.1-.9L19 14Z"></path><path d="m5 14 .9 2.1L8 17l-2.1.9L5 20l-.9-2.1L2 17l2.1-.9L5 14Z"></path></svg>`,
+    sports: `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="M12 3a15 15 0 0 1 4 9 15 15 0 0 1-4 9 15 15 0 0 1-4-9 15 15 0 0 1 4-9Z"></path><path d="M3 12h18"></path></svg>`,
+    layers: `<svg viewBox="0 0 24 24"><path d="m12 3 9 4.5-9 4.5-9-4.5Z"></path><path d="m3 12 9 4.5 9-4.5"></path><path d="m3 16.5 9 4.5 9-4.5"></path></svg>`,
+    close: `<svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"></path></svg>`,
+    cloud: `<svg viewBox="0 0 24 24"><path d="M7 18a4 4 0 0 1-.4-8A6 6 0 0 1 18 8a4 4 0 1 1 .5 8H7Z"></path><path d="m12 12 3 3"></path><path d="m12 12-3 3"></path><path d="M12 8v7"></path></svg>`,
+    "arrow-left": `<svg viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"></path></svg>`,
+    expand: `<svg viewBox="0 0 24 24"><path d="M8 3H3v5M16 3h5v5M21 16v5h-5M8 21H3v-5"></path></svg>`,
+    "thumbs-up": `<svg viewBox="0 0 24 24"><path d="M7 10v10"></path><path d="M14 4 9 10v10h8a2 2 0 0 0 2-1.6l1-6A2 2 0 0 0 18 10h-5l1-6Z"></path><path d="M3 10h4v10H3z"></path></svg>`,
+    "thumbs-down": `<svg viewBox="0 0 24 24"><path d="M7 14V4"></path><path d="m14 20-5-6V4h8a2 2 0 0 1 2 1.6l1 6A2 2 0 0 1 18 14h-5l1 6Z"></path><path d="M3 4h4v10H3z"></path></svg>`,
+    share: `<svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><path d="m8.6 13.5 6.8 4"></path><path d="m15.4 6.5-6.8 4"></path></svg>`,
+    bookmark: `<svg viewBox="0 0 24 24"><path d="M6 4h12v16l-6-4-6 4Z"></path></svg>`,
+    trash: `<svg viewBox="0 0 24 24"><path d="M3 6h18"></path><path d="M8 6V4h8v2"></path><path d="m19 6-1 14H6L5 6"></path></svg>`,
+    grid: `<svg viewBox="0 0 24 24"><path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"></path></svg>`,
+    "play-solid": `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 6.5v11l9-5.5-9-5.5Z"></path></svg>`,
+    sun: `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path></svg>`,
+    moon: `<svg viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"></path></svg>`,
+  };
+  return icons[name] || icons.layers;
+}
+
 window.showSection = showSection;
 window.showUploadModal = showUploadModal;
 window.hideUploadModal = hideUploadModal;
@@ -1814,641 +1307,6 @@ window.shareVideo = shareVideo;
 window.addToWatchLater = addToWatchLater;
 window.showAddToPlaylistModal = showAddToPlaylistModal;
 window.showCreatePlaylistModal = showCreatePlaylistModal;
-window.showEditProfileModal = showEditProfileModal;
+window.showEditProfileModal = () => showToast("Profile editing is not available yet.", "info");
 window.addComment = addComment;
 window.deleteComment = deleteComment;
-
-console.log('✓ All functions exposed globally for HTML onclick handlers');
-
-// Toggle fullscreen
-function toggleFullscreen() {
-  const modal = document.getElementById('videoPlayerModal');
-  const video = document.getElementById('mainVideoPlayer');
-  
-  if (!document.fullscreenElement) {
-    if (modal.requestFullscreen) {
-      modal.requestFullscreen();
-    } else if (modal.webkitRequestFullscreen) {
-      modal.webkitRequestFullscreen();
-    } else if (modal.msRequestFullscreen) {
-      modal.msRequestFullscreen();
-    }
-  } else {
-    if (document.exitFullscreen) {
-      document.exitFullscreen();
-    } else if (document.webkitExitFullscreen) {
-      document.webkitExitFullscreen();
-    } else if (document.msExitFullscreen) {
-      document.msExitFullscreen();
-    }
-  }
-}
-
-// Share video
-function shareVideo() {
-  const videoTitle = document.querySelector('.video-title')?.textContent || 'Check out this video!';
-  const videoUrl = document.getElementById('mainVideoPlayer')?.src || window.location.href;
-  
-  if (navigator.share) {
-    navigator.share({
-      title: videoTitle,
-      url: videoUrl
-    }).catch(console.error);
-  } else {
-    // Fallback: copy to clipboard
-    navigator.clipboard.writeText(videoUrl).then(() => {
-      showSuccess('Video URL copied to clipboard!');
-    }).catch(() => {
-      showError('Failed to copy URL');
-    });
-  }
-}
-
-// Enhanced video player setup
-function setupVideoPlayer() {
-  const video = document.getElementById('mainVideoPlayer');
-  const customControls = document.getElementById('customControls');
-  const playPauseBtn = document.getElementById('playPauseBtn');
-  const progressBar = document.getElementById('progressBar');
-  const currentTimeSpan = document.getElementById('currentTime');
-  const totalTimeSpan = document.getElementById('totalTime');
-  const volumeBtn = document.getElementById('volumeBtn');
-  const volumeSlider = document.getElementById('volumeSlider');
-  
-  if (!video) return;
-  
-  // Remove existing event listeners to prevent duplicates
-  video.removeEventListener('mouseenter', showControls);
-  video.removeEventListener('mouseleave', hideControls);
-  video.removeEventListener('play', updatePlayButton);
-  video.removeEventListener('pause', updatePauseButton);
-  video.removeEventListener('timeupdate', updateProgress);
-  video.removeEventListener('loadedmetadata', updateTotalTime);
-  
-  // Show/hide custom controls on hover with better performance
-  let controlsTimeout;
-  const showControls = () => {
-    clearTimeout(controlsTimeout);
-    if (customControls) customControls.classList.remove('hidden');
-  };
-  
-  const hideControls = () => {
-    controlsTimeout = setTimeout(() => {
-      if (customControls) customControls.classList.add('hidden');
-    }, 2000);
-  };
-  
-  video.addEventListener('mouseenter', showControls);
-  video.addEventListener('mouseleave', hideControls);
-  
-  // Play/Pause with better error handling
-  if (playPauseBtn) {
-    playPauseBtn.addEventListener('click', async () => {
-      try {
-        if (video.paused) {
-          await video.play();
-        } else {
-          video.pause();
-        }
-      } catch (error) {
-        console.error('Play/pause error:', error);
-        showError('Unable to play video. Please try again.');
-      }
-    });
-  }
-  
-  // Update play/pause button with better performance
-  const updatePlayButton = () => {
-    if (playPauseBtn) {
-      playPauseBtn.innerHTML = '<i class="fas fa-pause text-xl"></i>';
-    }
-  };
-  
-  const updatePauseButton = () => {
-    if (playPauseBtn) {
-      playPauseBtn.innerHTML = '<i class="fas fa-play text-xl"></i>';
-    }
-  };
-  
-  video.addEventListener('play', updatePlayButton);
-  video.addEventListener('pause', updatePauseButton);
-  
-  // Progress bar with throttling for better performance
-  let progressUpdateTimeout;
-  const updateProgress = () => {
-    if (progressUpdateTimeout) return;
-    
-    progressUpdateTimeout = setTimeout(() => {
-      if (video.duration && !isNaN(video.duration)) {
-        const progress = (video.currentTime / video.duration) * 100;
-        if (progressBar) progressBar.value = progress;
-        if (currentTimeSpan) {
-          currentTimeSpan.textContent = formatDuration(video.currentTime);
-        }
-      }
-      progressUpdateTimeout = null;
-    }, 100); // Throttle to 100ms
-  };
-  
-  video.addEventListener('timeupdate', updateProgress);
-  
-  // Progress bar seeking with better UX
-  if (progressBar) {
-    let isSeeking = false;
-    
-    progressBar.addEventListener('mousedown', () => {
-      isSeeking = true;
-    });
-    
-    progressBar.addEventListener('input', () => {
-      if (video.duration && !isNaN(video.duration)) {
-        const time = (progressBar.value / 100) * video.duration;
-        video.currentTime = time;
-      }
-    });
-    
-    progressBar.addEventListener('mouseup', () => {
-      isSeeking = false;
-    });
-  }
-  
-  // Total time update
-  const updateTotalTime = () => {
-    if (totalTimeSpan && video.duration && !isNaN(video.duration)) {
-      totalTimeSpan.textContent = formatDuration(video.duration);
-    }
-  };
-  
-  video.addEventListener('loadedmetadata', updateTotalTime);
-  
-  // Volume controls with better UX
-  if (volumeSlider) {
-    volumeSlider.addEventListener('input', () => {
-      const volume = volumeSlider.value / 100;
-      video.volume = volume;
-      updateVolumeIcon();
-    });
-  }
-  
-  if (volumeBtn) {
-    volumeBtn.addEventListener('click', () => {
-      if (video.volume > 0) {
-        video.volume = 0;
-        if (volumeSlider) volumeSlider.value = 0;
-      } else {
-        video.volume = 1;
-        if (volumeSlider) volumeSlider.value = 100;
-      }
-      updateVolumeIcon();
-    });
-  }
-  
-  function updateVolumeIcon() {
-    if (!volumeBtn) return;
-    
-    if (video.volume === 0) {
-      volumeBtn.innerHTML = '<i class="fas fa-volume-mute text-lg"></i>';
-    } else if (video.volume < 0.5) {
-      volumeBtn.innerHTML = '<i class="fas fa-volume-down text-lg"></i>';
-    } else {
-      volumeBtn.innerHTML = '<i class="fas fa-volume-up text-lg"></i>';
-    }
-  }
-  
-  // Keyboard shortcuts for better accessibility
-  document.addEventListener('keydown', (e) => {
-    if (document.getElementById('videoPlayerModal').classList.contains('hidden')) return;
-    
-    switch(e.code) {
-      case 'Space':
-        e.preventDefault();
-        if (video.paused) video.play();
-        else video.pause();
-        break;
-      case 'ArrowLeft':
-        e.preventDefault();
-        video.currentTime = Math.max(0, video.currentTime - 10);
-        break;
-      case 'ArrowRight':
-        e.preventDefault();
-        video.currentTime = Math.min(video.duration, video.currentTime + 10);
-        break;
-      case 'ArrowUp':
-        e.preventDefault();
-        video.volume = Math.min(1, video.volume + 0.1);
-        if (volumeSlider) volumeSlider.value = video.volume * 100;
-        updateVolumeIcon();
-        break;
-      case 'ArrowDown':
-        e.preventDefault();
-        video.volume = Math.max(0, video.volume - 0.1);
-        if (volumeSlider) volumeSlider.value = video.volume * 100;
-        updateVolumeIcon();
-        break;
-    }
-  });
-}
-
-console.log('✓ All functions exposed globally for HTML onclick handlers');
-
-// Load playlists
-async function loadPlaylists() {
-  try {
-    if (!currentUser) {
-      showError('Please login to view playlists');
-      return;
-    }
-
-    const response = await fetch(`${API_URL}/playlists`, {
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-      }
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Failed to load playlists');
-    }
-
-    const playlists = await response.json();
-    displayPlaylists(playlists);
-  } catch (error) {
-    console.error('Error loading playlists:', error);
-    showError(error.message);
-  }
-}
-
-// Display playlists
-function displayPlaylists(playlists) {
-  const container = document.getElementById('playlistsGrid');
-  if (!container) return;
-
-  if (playlists.length === 0) {
-    container.innerHTML = `
-      <div class="col-span-full text-center py-8">
-        <i class="fas fa-list text-4xl text-gray-400 mb-4"></i>
-        <p class="text-gray-500 dark:text-gray-400">No playlists yet</p>
-        <button onclick="showCreatePlaylistModal()" class="mt-4 bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary-dark transition-colors">
-          Create Your First Playlist
-        </button>
-      </div>
-    `;
-    return;
-  }
-
-  container.innerHTML = playlists.map(playlist => `
-    <div class="bg-white dark:bg-dark-card rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
-      <div class="p-4">
-        <h3 class="font-semibold text-lg mb-2">${playlist.name}</h3>
-        <p class="text-gray-600 dark:text-gray-400 text-sm mb-3">${playlist.description || 'No description'}</p>
-        <div class="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
-          <span>${playlist.videos.length} videos</span>
-          <span>${formatDate(playlist.createdAt)}</span>
-        </div>
-        <div class="mt-3 flex space-x-2">
-          <button onclick="viewPlaylist('${playlist._id}')" class="flex-1 bg-primary text-white px-3 py-1 rounded text-sm hover:bg-primary-dark transition-colors">
-            View
-          </button>
-          <button onclick="editPlaylist('${playlist._id}')" class="px-3 py-1 border border-gray-300 dark:border-gray-700 rounded text-sm hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-            Edit
-          </button>
-        </div>
-      </div>
-    </div>
-  `).join('');
-}
-
-// Load watch later
-async function loadWatchLater() {
-  try {
-    if (!currentUser) {
-      showError('Please login to view watch later');
-      return;
-    }
-
-    const response = await fetch(`${API_URL}/watch-later`, {
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-      }
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Failed to load watch later');
-    }
-
-    const videos = await response.json();
-    displayVideos(videos, 'watchLaterSection');
-  } catch (error) {
-    console.error('Error loading watch later:', error);
-    showError(error.message);
-  }
-}
-
-// Load user profile
-async function loadUserProfile() {
-  try {
-    if (!currentUser) {
-      showError('Please login to view profile');
-      return;
-    }
-
-    const response = await fetch(`${API_URL}/users/${currentUser._id}`);
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Failed to load profile');
-    }
-
-    const data = await response.json();
-    displayUserProfile(data.user, data.videos);
-  } catch (error) {
-    console.error('Error loading profile:', error);
-    showError(error.message);
-  }
-}
-
-// Display user profile
-function displayUserProfile(user, videos) {
-  const profilePicture = document.getElementById('profilePicture');
-  const profileUsername = document.getElementById('profileUsername');
-  const profileBio = document.getElementById('profileBio');
-  const videoCount = document.getElementById('videoCount');
-  const subscriberCount = document.getElementById('subscriberCount');
-
-  if (profilePicture) {
-    profilePicture.src = user.profilePicture || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.username)}&background=6B4EFF&color=fff`;
-  }
-  if (profileUsername) profileUsername.textContent = user.username;
-  if (profileBio) profileBio.textContent = user.bio || 'No bio yet';
-  if (videoCount) videoCount.textContent = videos.length;
-  if (subscriberCount) subscriberCount.textContent = user.subscribers;
-
-  displayVideos(videos, 'profileSection');
-}
-
-// Add to watch later
-async function addToWatchLater(videoId) {
-  if (!currentUser) {
-    showError('Please login to add videos to watch later');
-    return;
-  }
-
-  try {
-    const response = await fetch(`${API_URL}/videos/${videoId}/watch-later`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-      }
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Failed to add to watch later');
-    }
-
-    showSuccess('Added to watch later!');
-  } catch (error) {
-    console.error('Error adding to watch later:', error);
-    showError(error.message);
-  }
-}
-
-// Show create playlist modal
-function showCreatePlaylistModal() {
-  // This would open a modal to create a new playlist
-  const name = prompt('Enter playlist name:');
-  if (name && name.trim()) {
-    createPlaylist(name.trim());
-  }
-}
-
-// Create playlist
-async function createPlaylist(name, description = '') {
-  try {
-    const response = await fetch(`${API_URL}/playlists`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-      },
-      body: JSON.stringify({ name, description, isPublic: true })
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Failed to create playlist');
-    }
-
-    showSuccess('Playlist created successfully!');
-    loadPlaylists();
-  } catch (error) {
-    console.error('Error creating playlist:', error);
-    showError(error.message);
-  }
-}
-
-// Show add to playlist modal
-function showAddToPlaylistModal(videoId) {
-  // This would open a modal to select which playlist to add the video to
-  const playlistName = prompt('Enter playlist name to add video to:');
-  if (playlistName && playlistName.trim()) {
-    addVideoToPlaylist(videoId, playlistName.trim());
-  }
-}
-
-// Add video to playlist
-async function addVideoToPlaylist(videoId, playlistName) {
-  try {
-    // First get user's playlists
-    const response = await fetch(`${API_URL}/playlists`, {
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-      }
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Failed to get playlists');
-    }
-
-    const playlists = await response.json();
-    const playlist = playlists.find(p => p.name.toLowerCase() === playlistName.toLowerCase());
-
-    if (!playlist) {
-      throw new Error('Playlist not found');
-    }
-
-    // Add video to playlist
-    const addResponse = await fetch(`${API_URL}/playlists/${playlist._id}/videos`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-      },
-      body: JSON.stringify({ videoId })
-    });
-
-    if (!addResponse.ok) {
-      const error = await addResponse.json();
-      throw new Error(error.error || 'Failed to add video to playlist');
-    }
-
-    showSuccess('Video added to playlist!');
-  } catch (error) {
-    console.error('Error adding video to playlist:', error);
-    showError(error.message);
-  }
-}
-
-// Load and display comments
-async function loadComments(videoId) {
-  try {
-    const response = await fetch(`${API_URL}/videos/${videoId}`);
-    if (!response.ok) {
-      throw new Error('Failed to load video');
-    }
-
-    const video = await response.json();
-    displayComments(video.comments || []);
-  } catch (error) {
-    console.error('Error loading comments:', error);
-  }
-}
-
-// Display comments
-function displayComments(comments) {
-  const container = document.getElementById('commentsList');
-  if (!container) return;
-
-  if (comments.length === 0) {
-    container.innerHTML = '<p class="text-gray-500 dark:text-gray-400 text-center py-4">No comments yet. Be the first to comment!</p>';
-    return;
-  }
-
-  container.innerHTML = comments.map(comment => `
-    <div class="flex space-x-3">
-      <img src="${comment.userId.profilePicture || `https://ui-avatars.com/api/?name=${encodeURIComponent(comment.userId.username)}&background=6B4EFF&color=fff`}" 
-           alt="${comment.userId.username}" class="w-8 h-8 rounded-full flex-shrink-0">
-      <div class="flex-1">
-        <div class="flex items-center space-x-2 mb-1">
-          <span class="font-medium text-sm">${comment.userId.username}</span>
-          <span class="text-gray-500 dark:text-gray-400 text-xs">${formatDate(comment.createdAt)}</span>
-        </div>
-        <p class="text-sm">${comment.text}</p>
-        ${currentUser && (comment.userId._id === currentUser._id || comment.userId === currentUser._id) ? 
-          `<button onclick="deleteComment('${comment._id}')" class="text-red-500 text-xs hover:text-red-700 mt-1">Delete</button>` : 
-          ''
-        }
-      </div>
-    </div>
-  `).join('');
-}
-
-// Add comment
-async function addComment(videoId, text) {
-  try {
-    const response = await fetch(`${API_URL}/videos/${videoId}/comments`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-      },
-      body: JSON.stringify({ text })
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Failed to add comment');
-    }
-
-    const newComment = await response.json();
-    loadComments(videoId); // Reload comments
-    document.getElementById('commentInput').value = '';
-  } catch (error) {
-    console.error('Error adding comment:', error);
-    showError(error.message);
-  }
-}
-
-// Delete comment
-async function deleteComment(commentId) {
-  if (!confirm('Are you sure you want to delete this comment?')) {
-    return;
-  }
-
-  try {
-    const response = await fetch(`${API_URL}/videos/${currentVideoId}/comments/${commentId}`, {
-      method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-      }
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Failed to delete comment');
-    }
-
-    loadComments(currentVideoId); // Reload comments
-  } catch (error) {
-    console.error('Error deleting comment:', error);
-    showError(error.message);
-  }
-}
-
-// Enhanced error handling for API calls
-async function apiCall(url, options = {}) {
-  try {
-    console.log(`🌐 API Call: ${options.method || 'GET'} ${url}`);
-    
-    const response = await fetch(url, options);
-    console.log(`📡 Response status: ${response.status}`);
-    
-    // Check if response is JSON
-    const contentType = response.headers.get('content-type');
-    if (!contentType || !contentType.includes('application/json')) {
-      const text = await response.text();
-      console.error('❌ Non-JSON response received:', text.substring(0, 200));
-      throw new Error(`Server returned non-JSON response: ${response.status} ${response.statusText}`);
-    }
-    
-    const data = await response.json();
-    
-    if (!response.ok) {
-      console.error('❌ API Error:', data);
-      throw new Error(data.error || `HTTP ${response.status}: ${response.statusText}`);
-    }
-    
-    console.log('✅ API call successful:', data);
-    return data;
-  } catch (error) {
-    console.error('❌ API call failed:', error);
-    throw error;
-  }
-}
-
-// Test API connectivity
-async function testAPIConnectivity() {
-  try {
-    console.log('🧪 Testing API connectivity...');
-    const response = await fetch(`${API_URL}/videos`);
-    console.log('📡 Test response status:', response.status);
-    console.log('📡 Test response headers:', Object.fromEntries(response.headers.entries()));
-    
-    const contentType = response.headers.get('content-type');
-    console.log('📡 Content-Type:', contentType);
-    
-    if (contentType && contentType.includes('application/json')) {
-      const data = await response.json();
-      console.log('✅ API test successful, received JSON data');
-      return true;
-    } else {
-      const text = await response.text();
-      console.error('❌ API test failed - received non-JSON response:', text.substring(0, 200));
-      return false;
-    }
-  } catch (error) {
-    console.error('❌ API test failed with error:', error);
-    return false;
-  }
-} 
