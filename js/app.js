@@ -6,7 +6,7 @@ let lastHomeVideos = [];
 let lastSearchTerm = "";
 let currentTheme = localStorage.getItem("navistream-theme") || "dark";
 
-const API_URL = "http://localhost:5000/api";
+const API_URL = "https://your-render-backend-url.onrender.com/api";
 const ui = {};
 
 class Auth {
